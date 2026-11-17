@@ -73,3 +73,10 @@ Check: http://localhost:8000/health
 ## Environment Variables
 
 Real `.env` files are **not committed**. Copy each `.env.example` to `.env` and add your own values.
+
+## Project Progress
+
+- [x] Phase 1 Day 1: Development environment setup
+- [x] Phase 1 Day 2: Git & GitHub version control
+- [ ] Database setup (MongoDB Atlas)
+- [ ] User authentication
