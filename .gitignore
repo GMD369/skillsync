@@ -3,6 +3,7 @@ node_modules/
 venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Secrets - never commit real keys or passwords
 .env

@@ -1,15 +1,7 @@
 import { Router } from "express";
-import mongoose from "mongoose";
+import { getHealth } from "../controllers/health.controller.js";
 
 const router = Router();
-
-// GET /api/health - quick check that the API is up
-router.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "skillsync-backend",
-    database: mongoose.connection.readyState === 1 ? "connected" : "not connected",
-  });
-});
+router.get("/", getHealth);
 
 export default router;
