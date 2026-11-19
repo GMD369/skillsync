@@ -33,6 +33,24 @@ SkillSync uses a simple **three-tier architecture** with a separate AI service:
 | Missing skills | LLM builds a week-by-week plan | Personalized learning roadmap |
 | Completed tasks, interview answers | Update progress, evaluate answers with LLM | Readiness score, feedback, recommendations |
 
+## Requirements
+
+The full requirements specification is in **[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)**:
+15 functional and 9 non-functional requirements, user requirements, 11 features
+(input → processing → output), module dependencies, MoSCoW priorities and a 41-task development list.
+
+| Priority | Features |
+|----------|----------|
+| **Must Have** (MVP) | Registration & Login, Student Profile & Resume Upload, Resume Analyzer, Career Role Selection & Skill Gap Analysis, Learning Roadmap, Progress Dashboard |
+| **Should Have** | Project Recommendations, Internship Recommendations, AI Interview Preparation |
+| **Could Have** | AI Career Assistant (chat), Google OAuth login, Email reminders and dark mode |
+
+### Module Dependencies
+
+![Module dependencies](docs/diagrams/dependencies.png)
+
+An arrow from A to B means B needs A first. Critical path: **M1 → M2 → M4 → M5 → M6**.
+
 ## Modules
 
 | # | Module | Responsibility | Where |
@@ -185,5 +203,6 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 1: Development environment setup
 - [x] Phase 1 Day 2: Git & GitHub version control
 - [x] Phase 1 Day 3: Project structure, modules and architecture
+- [x] Phase 1 Day 4: Requirements analysis and module planning
 - [ ] Database setup (MongoDB Atlas)
 - [ ] User authentication
