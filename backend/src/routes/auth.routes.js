@@ -1,9 +1,11 @@
 import { Router } from "express";
-import { notImplemented } from "../utils/notImplemented.js";
+import { register, login, getMe } from "../controllers/auth.controller.js";
+import { requireAuth } from "../middleware/auth.middleware.js";
 
-// Authentication module
+// Authentication module (M1)
 const router = Router();
-router.post("/register", notImplemented("Register"));
-router.post("/login", notImplemented("Login"));
+router.post("/register", register);
+router.post("/login", login);
+router.get("/me", requireAuth, getMe);
 
 export default router;

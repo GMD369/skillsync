@@ -8,6 +8,12 @@ suggestions and interview practice.
 
 > UNAI TECH Virtual Internship Program 2026 - Domain: Full-Stack Web Development with AI Integration
 
+## Current Status
+
+**Module M1 – Authentication is complete:** students can register, log in, stay logged in after a
+page refresh, open the protected dashboard and log out. Passwords are hashed with bcrypt and every
+private API route is protected with JWT. See [docs/modules/M1-authentication.md](docs/modules/M1-authentication.md).
+
 ## Architecture
 
 SkillSync uses a simple **three-tier architecture** with a separate AI service:
@@ -114,8 +120,9 @@ Endpoints marked ✅ work now; the others return `501 Not Implemented` until the
 | Method | Endpoint | Module | Auth |
 |--------|----------|--------|------|
 | GET | `/api/health` ✅ | System | – |
-| POST | `/api/auth/register` | Authentication | – |
-| POST | `/api/auth/login` | Authentication | – |
+| POST | `/api/auth/register` ✅ | Authentication | – |
+| POST | `/api/auth/login` ✅ | Authentication | – |
+| GET | `/api/auth/me` ✅ | Authentication | JWT |
 | GET / PUT | `/api/profile` | Profile | JWT |
 | POST | `/api/profile/resume` | Profile & Resume | JWT |
 | GET | `/api/career/roles` | Career | – |
@@ -157,7 +164,7 @@ Modules are built in order of dependency, with the core features first:
 
 ## Getting Started
 
-**Prerequisites:** Node.js 20+, Python 3.10+, Git
+**Prerequisites:** Node.js 20+, Python 3.10+, Git, MongoDB (local install or a MongoDB Atlas connection string)
 
 ### 1. Frontend (http://localhost:3000)
 ```bash
@@ -189,8 +196,8 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 
 ### Run tests
 ```bash
-cd ai-service
-pytest
+cd backend && npm test        # authentication API tests (12)
+cd ai-service && pytest       # resume parser tests
 ```
 
 ## Environment Variables
@@ -204,5 +211,5 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 2: Git & GitHub version control
 - [x] Phase 1 Day 3: Project structure, modules and architecture
 - [x] Phase 1 Day 4: Requirements analysis and module planning
-- [ ] Database setup (MongoDB Atlas)
-- [ ] User authentication
+- [x] Phase 1 Day 5: **M1 Authentication** - register, login, logout, JWT-protected dashboard (12 passing tests)
+- [ ] M2 Profile & Resume upload

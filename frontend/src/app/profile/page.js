@@ -1,10 +1,19 @@
-// Profile page - Education, interests, skills and resume upload.
-// Placeholder: UI will be built in the development phase.
+"use client";
+
+import { UserRound } from "lucide-react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ComingSoon from "@/components/layout/ComingSoon";
+
+// Your Profile page - built in module M2.
 export default function ProfilePage() {
   return (
-    <main className="mx-auto max-w-4xl p-8">
-      <h1 className="text-2xl font-bold">Profile</h1>
-      <p className="mt-2 text-gray-600">Education, interests, skills and resume upload.</p>
-    </main>
+    <ProtectedRoute>
+      <ComingSoon
+        icon={UserRound}
+        module="M2"
+        title="Your Profile"
+        description="Add your education, interests and skills, and upload your resume so SkillSync can detect your skills automatically."
+      />
+    </ProtectedRoute>
   );
 }

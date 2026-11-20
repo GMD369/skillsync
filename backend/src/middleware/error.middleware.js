@@ -3,7 +3,17 @@ export function notFound(req, res) {
   res.status(404).json({ message: `Route not found: ${req.originalUrl}` });
 }
 
+// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
-  console.error(err);
-  res.status(err.status || 500).json({ message: err.message || "Server error" });
+  // Request body is not valid JSON
+  if (err.type === "entity.parse.failed") {
+    return res.status(400).json({ message: "Request body must be valid JSON" });
+  }
+  // MongoDB unique index violation (e.g. two sign-ups with the same email at the same time)
+  if (err.code === 11000) {
+    return res.status(409).json({ message: "An account with this email already exists" });
+  }
+  const status = err.status || 500;
+  if (status >= 500) console.error(err);
+  res.status(status).json({ message: status >= 500 ? "Something went wrong on the server" : err.message });
 }

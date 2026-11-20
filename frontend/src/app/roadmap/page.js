@@ -1,10 +1,19 @@
-// Learning Roadmap page - Your personalized week-by-week learning plan.
-// Placeholder: UI will be built in the development phase.
+"use client";
+
+import { Map } from "lucide-react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import ComingSoon from "@/components/layout/ComingSoon";
+
+// Learning Roadmap page - built in module M5.
 export default function RoadmapPage() {
   return (
-    <main className="mx-auto max-w-4xl p-8">
-      <h1 className="text-2xl font-bold">Learning Roadmap</h1>
-      <p className="mt-2 text-gray-600">Your personalized week-by-week learning plan.</p>
-    </main>
+    <ProtectedRoute>
+      <ComingSoon
+        icon={Map}
+        module="M5"
+        title="Learning Roadmap"
+        description="Get a personalized week-by-week learning plan with free resources for every missing skill."
+      />
+    </ProtectedRoute>
   );
 }

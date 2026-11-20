@@ -1,23 +1,21 @@
-import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
-import connectDB from "./config/db.js";
-import apiRoutes from "./routes/index.js";
-import { notFound, errorHandler } from "./middleware/error.middleware.js";
-
 dotenv.config();
 
-const app = express();
+const { default: app } = await import("./app.js");
+const { default: connectDB } = await import("./config/db.js");
+
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:3000" }));
-app.use(express.json());
+if (!process.env.JWT_SECRET) {
+  console.error("JWT_SECRET is missing. Add it to backend/.env (see .env.example).");
+  process.exit(1);
+}
 
-app.use("/api", apiRoutes);
+try {
+  await connectDB();
+} catch (err) {
+  console.error("Could not connect to MongoDB:", err.message);
+  process.exit(1);
+}
 
-app.use(notFound);
-app.use(errorHandler);
-
-connectDB().finally(() => {
-  app.listen(PORT, () => console.log(`SkillSync API running on http://localhost:${PORT}`));
-});
+app.listen(PORT, () => console.log(`SkillSync API running on http://localhost:${PORT}`));
