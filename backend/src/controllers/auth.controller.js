@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import { generateToken } from "../utils/generateToken.js";
 import { validateRegister, validateLogin } from "../utils/validators.js";
+import { recordFailedLogin, clearFailedLogins } from "../middleware/rateLimit.middleware.js";
 
 // POST /api/auth/register  (FR-01)
 export async function register(req, res, next) {
@@ -42,9 +43,11 @@ export async function login(req, res, next) {
     // Same message for unknown email and wrong password, so attackers
     // cannot find out which emails are registered.
     if (!user || !(await user.comparePassword(req.body.password))) {
+      recordFailedLogin(req); // counts towards the brute-force limit
       return res.status(401).json({ message: "Incorrect email or password" });
     }
 
+    clearFailedLogins(req);
     res.json({ message: "Logged in", token: generateToken(user._id), user });
   } catch (err) {
     next(err);

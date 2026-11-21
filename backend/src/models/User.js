@@ -1,6 +1,18 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+// Information about the student's uploaded resume (the PDF itself is stored on disk).
+const resumeSchema = new mongoose.Schema(
+  {
+    fileName: { type: String, required: true }, // stored file name (not shown to users)
+    originalName: { type: String, required: true },
+    size: { type: Number, required: true },
+    uploadedAt: { type: Date, default: Date.now },
+    detectedSkills: [{ type: String }], // skills found by the AI resume analyzer
+  },
+  { _id: false }
+);
+
 // Student account and profile data.
 const userSchema = new mongoose.Schema(
   {
@@ -8,10 +20,16 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     // Stored only as a bcrypt hash and never returned by queries unless asked for.
     password: { type: String, required: true, select: false },
-    education: { type: String, default: "" },
+
+    // Profile (M2)
+    university: { type: String, trim: true, default: "" },
+    degree: { type: String, trim: true, default: "" },
+    graduationYear: { type: Number, default: null },
+    interests: [{ type: String, trim: true }],
     skills: [{ type: String, trim: true }],
+    resume: { type: resumeSchema, default: null },
+
     targetRole: { type: mongoose.Schema.Types.ObjectId, ref: "CareerRole" },
-    resumeUrl: { type: String, default: "" },
   },
   { timestamps: true }
 );
@@ -27,11 +45,19 @@ userSchema.methods.comparePassword = function (plainPassword) {
   return bcrypt.compare(plainPassword, this.password);
 };
 
-// Remove sensitive fields when a user is sent as JSON.
+// A profile counts as complete when the education details are filled in.
+userSchema.virtual("profileComplete").get(function () {
+  return Boolean(this.university && this.degree);
+});
+
+// Remove sensitive/internal fields when a user is sent as JSON.
 userSchema.set("toJSON", {
+  virtuals: true,
   transform: (doc, ret) => {
     delete ret.password;
     delete ret.__v;
+    delete ret.id;
+    if (ret.resume) delete ret.resume.fileName;
     return ret;
   },
 });

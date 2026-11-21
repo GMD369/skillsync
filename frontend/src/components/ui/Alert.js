@@ -1,10 +1,17 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 
-// Error banner shown at the top of a form.
-export default function Alert({ children }) {
+// Message banner. variant: "error" (default) | "success" | "info"
+const styles = {
+  error: { cls: "skeu-alert", Icon: AlertTriangle, role: "alert" },
+  success: { cls: "skeu-success", Icon: CheckCircle2, role: "status" },
+  info: { cls: "skeu-well text-[#4a4555]", Icon: Info, role: "status" },
+};
+
+export default function Alert({ children, variant = "error" }) {
+  const { cls, Icon, role } = styles[variant];
   return (
-    <div role="alert" className="skeu-alert flex items-start gap-3 rounded-xl p-3.5 text-sm font-medium">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+    <div role={role} className={`${cls} flex items-start gap-3 rounded-xl p-3.5 text-sm font-medium`}>
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       <span>{children}</span>
     </div>
   );

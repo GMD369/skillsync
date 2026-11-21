@@ -7,6 +7,7 @@ import { LayoutDashboard, LogOut, Map, Menu, Target, UserRound, X } from "lucide
 import { useAuth } from "@/context/AuthContext";
 import Logo from "@/components/ui/Logo";
 import Button from "@/components/ui/Button";
+import { initials } from "@/lib/format";
 
 const privateLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -17,10 +18,6 @@ const privateLinks = [
 
 // Login and register pages have their own full-screen layout.
 const HIDDEN_ON = ["/login", "/register"];
-
-function initials(name) {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
-}
 
 // Brushed-metal toolbar with pressed-in tabs for the active page.
 export default function Navbar() {

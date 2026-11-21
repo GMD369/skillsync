@@ -7,10 +7,12 @@ cd backend
 npm test
 ```
 
-The tests use a separate database (`TEST_MONGO_URI` in `.env`, default
-`mongodb://127.0.0.1:27017/skillsync_test`), which is wiped before each test and
-dropped afterwards, so your development data is never touched.
+Each test file uses its own database based on `TEST_MONGO_URI` (e.g. `skillsync_test_auth`,
+`skillsync_test_profile`), because Node runs test files in parallel. The databases are wiped before
+each test and dropped afterwards, so your development data is never touched. Shared setup is in
+`helpers.js`.
 
 | File | Covers |
 |------|--------|
-| `auth.test.js` | Register, login, password hashing, duplicate email, validation errors, JWT-protected routes, invalid JSON (12 tests) |
+| `auth.test.js` | Register, login, password hashing, duplicate email, validation, 72-byte password limit, brute-force lock, JWT-protected routes, invalid JSON (15 tests) |
+| `profile.test.js` | Profile update and validation, skills de-duplication, resume upload with a fake AI service, AI service down, non-PDF / fake PDF / too large, download, delete, privacy between students (16 tests) |

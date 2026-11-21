@@ -10,9 +10,14 @@ suggestions and interview practice.
 
 ## Current Status
 
-**Module M1 – Authentication is complete:** students can register, log in, stay logged in after a
-page refresh, open the protected dashboard and log out. Passwords are hashed with bcrypt and every
-private API route is protected with JWT. See [docs/modules/M1-authentication.md](docs/modules/M1-authentication.md).
+| Module | Status |
+|--------|--------|
+| **M1 – Authentication** | ✅ Register, login, logout, JWT-protected pages, brute-force protection ([docs](docs/modules/M1-authentication.md)) |
+| **M2 – Profile & Resume** | ✅ Education details, skills, PDF resume upload / download / delete ([docs](docs/modules/M2-profile-resume.md)) |
+| **M3 – Resume Analyzer (AI)** | ✅ First version: detects ~90 skills from resume text, connected to M2 |
+| M4 – Career & Skill Gap | Next |
+
+**Tests:** 31 backend API tests + 11 AI service tests, all passing.
 
 ## Architecture
 
@@ -123,8 +128,8 @@ Endpoints marked ✅ work now; the others return `501 Not Implemented` until the
 | POST | `/api/auth/register` ✅ | Authentication | – |
 | POST | `/api/auth/login` ✅ | Authentication | – |
 | GET | `/api/auth/me` ✅ | Authentication | JWT |
-| GET / PUT | `/api/profile` | Profile | JWT |
-| POST | `/api/profile/resume` | Profile & Resume | JWT |
+| GET / PUT | `/api/profile` ✅ | Profile | JWT |
+| POST / GET / DELETE | `/api/profile/resume` ✅ | Profile & Resume | JWT |
 | GET | `/api/career/roles` | Career | – |
 | GET | `/api/career/skill-gap` | Skill Gap | JWT |
 | GET / POST | `/api/career/roadmap` | Roadmap | JWT |
@@ -196,8 +201,8 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 
 ### Run tests
 ```bash
-cd backend && npm test        # authentication API tests (12)
-cd ai-service && pytest       # resume parser tests
+cd backend && npm test        # API tests: authentication (15) + profile & resume (16)
+cd ai-service && pytest       # resume parser tests (11)
 ```
 
 ## Environment Variables
@@ -212,4 +217,5 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 3: Project structure, modules and architecture
 - [x] Phase 1 Day 4: Requirements analysis and module planning
 - [x] Phase 1 Day 5: **M1 Authentication** - register, login, logout, JWT-protected dashboard (12 passing tests)
-- [ ] M2 Profile & Resume upload
+- [x] Phase 1 Day 6: **M1 improvements** (brute-force protection, 72-byte password limit, auto-logout) and **M2 Profile & Resume** connected to the **AI Resume Analyzer**
+- [ ] M4 Career roles & Skill Gap Analysis

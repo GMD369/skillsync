@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Check, Mail, ShieldCheck, Sparkles, Target, Wrench } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, GraduationCap, Mail, Pencil, Sparkles, Target, Wrench } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
+import { formatDate, initials } from "@/lib/format";
 
 // Dashboard - only visible to logged-in students.
-// The readiness score and roadmap progress will be filled in by later modules (M4-M6).
+// Shows live data from the Profile module (M2); readiness and roadmap come in M4-M6.
 function DashboardContent() {
   const { user } = useAuth();
   const firstName = user.name.split(" ")[0];
-  const joined = new Date(user.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-  const initials = user.name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("");
+  const skills = user.skills || [];
 
   const checklist = [
     { label: "Create your account", done: true },
-    { label: "Complete your profile", done: Boolean(user.education), href: "/profile" },
-    { label: "Upload your resume", done: Boolean(user.resumeUrl), href: "/profile" },
+    { label: "Complete your profile", done: user.profileComplete, href: "/profile" },
+    { label: "Upload your resume", done: Boolean(user.resume), href: "/profile" },
     { label: "Choose a career goal", done: Boolean(user.targetRole), href: "/skill-gap" },
     { label: "Generate your learning roadmap", done: false, href: "/roadmap" },
   ];
@@ -25,8 +25,11 @@ function DashboardContent() {
 
   const stats = [
     { icon: Target, label: "Career readiness", value: "–", note: "Choose a career goal first" },
-    { icon: Wrench, label: "Skills added", value: user.skills?.length || 0, note: "From profile and resume" },
-    { icon: CalendarDays, label: "Member since", value: joined, note: "Welcome to SkillSync" },
+    {
+      icon: Wrench, label: "Skills added", value: skills.length,
+      note: user.resume ? `${user.resume.detectedSkills.length} detected in your resume` : "Add skills or upload your resume",
+    },
+    { icon: CalendarDays, label: "Member since", value: formatDate(user.createdAt), note: "Welcome to SkillSync" },
   ];
 
   return (
@@ -95,12 +98,17 @@ function DashboardContent() {
           </ul>
         </section>
 
-        {/* Account card */}
+        {/* Profile summary card (data from the Profile module) */}
         <section className="skeu-card p-6">
-          <h2 className="skeu-emboss text-lg font-bold text-[#2a2733]">Your account</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="skeu-emboss text-lg font-bold text-[#2a2733]">Your profile</h2>
+            <Link href="/profile" className="skeu-btn skeu-btn-secondary flex h-8 items-center gap-1 rounded-lg px-3 text-xs font-bold">
+              <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit
+            </Link>
+          </div>
           <div className="mt-5 flex items-center gap-4">
             <span className="skeu-appicon grid h-14 w-14 shrink-0 place-items-center rounded-full text-lg font-extrabold text-white">
-              <span className="skeu-engrave relative z-10">{initials}</span>
+              <span className="skeu-engrave relative z-10">{initials(user.name)}</span>
             </span>
             <div className="min-w-0">
               <p className="skeu-emboss truncate font-bold text-[#2a2733]">{user.name}</p>
@@ -109,15 +117,32 @@ function DashboardContent() {
               </p>
             </div>
           </div>
-          <div className="skeu-well mt-6 flex gap-3 p-4 text-sm">
-            <ShieldCheck className="h-5 w-5 shrink-0 text-[#23a356]" aria-hidden="true" />
-            <div>
-              <p className="skeu-emboss font-bold text-[#2a2733]">Secure login</p>
-              <p className="skeu-emboss mt-1 text-[#6b6476]">
-                Your password is encrypted and your session is protected with a secure token.
-              </p>
-            </div>
+          <div className="skeu-well mt-5 flex gap-3 p-4 text-sm">
+            <GraduationCap className="h-5 w-5 shrink-0 text-[#4639d6]" aria-hidden="true" />
+            {user.profileComplete ? (
+              <div className="min-w-0">
+                <p className="skeu-emboss font-bold text-[#2a2733]">{user.degree}</p>
+                <p className="skeu-emboss text-[#6b6476]">
+                  {user.university}{user.graduationYear ? ` · Class of ${user.graduationYear}` : ""}
+                </p>
+              </div>
+            ) : (
+              <p className="skeu-emboss text-[#6b6476]">Add your university and degree on the profile page.</p>
+            )}
           </div>
+          <p className="skeu-emboss mt-5 text-sm font-bold text-[#3b3646]">Skills ({skills.length})</p>
+          {skills.length ? (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {skills.slice(0, 12).map((s) => (
+                <li key={s} className="skeu-chip rounded-full px-2.5 py-0.5 text-xs font-semibold">{s}</li>
+              ))}
+              {skills.length > 12 && (
+                <li className="skeu-emboss px-1 py-0.5 text-xs font-semibold text-[#6b6476]">+{skills.length - 12} more</li>
+              )}
+            </ul>
+          ) : (
+            <p className="skeu-emboss mt-1 text-sm italic text-[#8d8577]">No skills yet.</p>
+          )}
         </section>
       </div>
     </main>

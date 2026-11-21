@@ -1,48 +1,25 @@
-// Authentication module tests (T1.6).
-// Run with: npm test
-// Uses Node's built-in test runner and fetch, against a separate test database
-// (TEST_MONGO_URI in .env). The test database is wiped before each test.
+// Authentication module tests (M1). Run with: npm test
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import mongoose from "mongoose";
-import dotenv from "dotenv";
+import { setupTestApp } from "./helpers.js";
 
-dotenv.config();
-process.env.JWT_SECRET = "test_secret_for_automated_tests_only";
-const TEST_DB = process.env.TEST_MONGO_URI || "mongodb://127.0.0.1:27017/skillsync_test";
-
-const { default: app } = await import("../src/app.js");
-const { default: User } = await import("../src/models/User.js");
-
-let server;
-let baseUrl;
+let ctx;
 const student = { name: "Test Student", email: "student@example.com", password: "secret123" };
 
 before(async () => {
-  await mongoose.connect(TEST_DB, { serverSelectionTimeoutMS: 5000 });
-  await User.init(); // build the unique email index
-  server = app.listen(0); // random free port
-  baseUrl = `http://127.0.0.1:${server.address().port}/api`;
+  ctx = await setupTestApp("auth");
 });
 after(async () => {
-  server.close();
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await ctx.teardown();
 });
 beforeEach(async () => {
-  await User.deleteMany({});
+  await ctx.User.deleteMany({});
+  const { resetLoginLimiter } = await import("../src/middleware/rateLimit.middleware.js");
+  resetLoginLimiter();
 });
 
-async function call(method, path, { body, token, raw } = {}) {
-  const res = await fetch(baseUrl + path, {
-    method,
-    headers: { "Content-Type": "application/json", ...(token && { Authorization: `Bearer ${token}` }) },
-    body: raw ?? (body ? JSON.stringify(body) : undefined),
-  });
-  return { status: res.status, body: await res.json() };
-}
-const register = (body) => call("POST", "/auth/register", { body });
-const login = (body) => call("POST", "/auth/login", { body });
+const register = (body) => ctx.call("POST", "/auth/register", { body });
+const login = (body) => ctx.call("POST", "/auth/login", { body });
 
 test("registers a new student and returns a token", async () => {
   const res = await register(student);
@@ -54,7 +31,7 @@ test("registers a new student and returns a token", async () => {
 
 test("stores the password as a bcrypt hash, not plain text", async () => {
   await register(student);
-  const saved = await User.findOne({ email: student.email }).select("+password");
+  const saved = await ctx.User.findOne({ email: student.email }).select("+password");
   assert.notEqual(saved.password, student.password);
   assert.match(saved.password, /^\$2[aby]\$/);
 });
@@ -79,6 +56,12 @@ test("rejects a password without a number", async () => {
   assert.match(res.body.errors.password, /letter and one number/);
 });
 
+test("rejects a password longer than 72 bytes (bcrypt limit)", async () => {
+  const res = await register({ ...student, password: "a1".repeat(37) }); // 74 characters
+  assert.equal(res.status, 400);
+  assert.match(res.body.errors.password, /at most 72/);
+});
+
 test("logs in with correct credentials", async () => {
   await register(student);
   const res = await login({ email: student.email, password: student.password });
@@ -99,6 +82,24 @@ test("rejects an unknown email with the same message", async () => {
   assert.equal(res.body.message, "Incorrect email or password");
 });
 
+test("blocks login after 5 failed attempts (brute-force protection)", async () => {
+  await register(student);
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await login({ email: student.email, password: "wrongpass1" })).status, 401);
+  }
+  const blocked = await login({ email: student.email, password: student.password });
+  assert.equal(blocked.status, 429, "even the correct password is blocked while locked");
+  assert.match(blocked.body.message, /Too many failed login attempts/);
+});
+
+test("a successful login resets the failed-attempt counter", async () => {
+  await register(student);
+  for (let i = 0; i < 4; i++) await login({ email: student.email, password: "wrongpass1" });
+  assert.equal((await login(student)).status, 200);
+  for (let i = 0; i < 4; i++) await login({ email: student.email, password: "wrongpass1" });
+  assert.equal((await login(student)).status, 200);
+});
+
 test("rejects login with missing fields", async () => {
   const res = await login({});
   assert.equal(res.status, 400);
@@ -106,17 +107,17 @@ test("rejects login with missing fields", async () => {
 
 test("returns the current user for a valid token", async () => {
   const { body } = await register(student);
-  const res = await call("GET", "/auth/me", { token: body.token });
+  const res = await ctx.call("GET", "/auth/me", { token: body.token });
   assert.equal(res.status, 200);
   assert.equal(res.body.user.name, student.name);
 });
 
 test("blocks protected routes without a token or with an invalid token", async () => {
-  assert.equal((await call("GET", "/auth/me")).status, 401);
-  assert.equal((await call("GET", "/auth/me", { token: "not.a.real.token" })).status, 401);
+  assert.equal((await ctx.call("GET", "/auth/me")).status, 401);
+  assert.equal((await ctx.call("GET", "/auth/me", { token: "not.a.real.token" })).status, 401);
 });
 
 test("returns 400 for a request body that is not valid JSON", async () => {
-  const res = await call("POST", "/auth/login", { raw: "{bad json" });
+  const res = await ctx.call("POST", "/auth/login", { raw: "{bad json" });
   assert.equal(res.status, 400);
 });

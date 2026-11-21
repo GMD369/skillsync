@@ -1,6 +1,6 @@
 # Module M1 – Authentication
 
-**Status:** Complete (Phase 1, Day 5)
+**Status:** Complete (Phase 1, Day 5) · Improved on Day 6
 **Requirements covered:** FR-01 (register), FR-02 (login/logout), FR-03 (protect private pages and APIs),
 NFR-02 (security)
 
@@ -78,13 +78,24 @@ Rules are checked in the browser (instant feedback) **and** on the server (canno
 - The token is stored in `localStorage` for simplicity in this MVP. A more secure option for production
   is an HTTP-only cookie, which JavaScript cannot read.
 
-## Testing
+## Day 6 improvements
+
+| Problem found in review | Fix |
+|-------------------------|-----|
+| bcrypt only uses the first 72 bytes of a password, so two long passwords with the same start would both work | Passwords longer than 72 bytes are rejected (backend and frontend) |
+| No protection against password guessing | After 5 failed logins for the same email and IP, login is blocked for 15 minutes (`429`) |
+| If the token expired while using the app, pages showed errors | Any `401` response now logs the student out and redirects to the login page |
+| Dashboard checklist used fields that did not exist (`education`, `resumeUrl`) | Uses the real profile data (`profileComplete`, `resume`) |
+| `initials()` was copied in two components | Moved to the shared `lib/format.js` |
+| Test files could interfere with each other when run in parallel | Shared `tests/helpers.js` gives every test file its own database |
+
 
 ```bash
 cd backend
 npm test
 ```
 
-12 tests pass: successful registration, password hashing, duplicate email (any letter case), invalid
+15 tests pass (12 from Day 5 + 3 for the Day 6 improvements): successful registration, password hashing, duplicate email (any letter case), invalid
 input, weak password, successful login, wrong password, unknown email, missing fields, `/me` with a
-valid token, protected routes without or with an invalid token, and invalid JSON.
+valid token, protected routes without or with an invalid token, invalid JSON, passwords over 72 bytes,
+locking after 5 failed logins, and resetting the counter after a successful login.

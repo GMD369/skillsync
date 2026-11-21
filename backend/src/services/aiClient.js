@@ -1,12 +1,25 @@
 // Calls the Python AI service (resume analysis, roadmap generation, interview feedback).
-const AI_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
+const aiUrl = () => process.env.AI_SERVICE_URL || "http://localhost:8000";
+const TIMEOUT_MS = 15000; // NFR-01: AI requests must finish within 15 seconds
 
-export async function callAI(path, body) {
-  const res = await fetch(`${AI_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`AI service error (${res.status})`);
-  return res.json();
+export class AIServiceError extends Error {}
+
+// Sends a resume PDF to the AI service and returns the list of detected skills.
+export async function analyzeResume(buffer, originalName) {
+  const form = new FormData();
+  form.append("file", new Blob([buffer], { type: "application/pdf" }), originalName);
+
+  let res;
+  try {
+    res = await fetch(`${aiUrl()}/resume/analyze`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    throw new AIServiceError("The AI service is not reachable");
+  }
+  if (!res.ok) throw new AIServiceError(`The AI service returned an error (${res.status})`);
+  const data = await res.json();
+  return Array.isArray(data.skills) ? data.skills : [];
 }
