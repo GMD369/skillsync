@@ -41,7 +41,9 @@ SKILLS: dict[str, list[str]] = {
     # Backend
     "Node.js": ["node\\.js", "nodejs"],
     "Express.js": ["express\\.js", "expressjs"],
+    "NestJS": ["nestjs", "nest\\.js"],
     "Django": ["django"],
+    "Django REST Framework": ["django rest framework", "drf"],
     "Flask": ["flask"],
     "FastAPI": ["fastapi"],
     "Spring Boot": ["spring boot", "springboot"],
@@ -145,6 +147,40 @@ def extract_text(pdf_file) -> str:
             return "\n".join(page.extract_text() or "" for page in pdf.pages)
     except Exception as exc:  # pdfplumber raises several different error types
         raise ValueError("The file could not be read as a PDF") from exc
+
+
+def _squash(text: str) -> str:
+    """Lower-case and keep only letters, digits, + and #: "Next JS" -> "nextjs", "C++" -> "c++"."""
+    return re.sub(r"[^a-z0-9+#]", "", text.lower())
+
+
+# Squashed spelling -> canonical name, built from every name and alias.
+_SQUASHED: dict[str, str] = {}
+for _name, _aliases in SKILLS.items():
+    for _variant in [_name, *_aliases, *CASE_SENSITIVE.get(_name, [])]:
+        _SQUASHED.setdefault(_squash(_variant), _name)
+
+
+def normalize_skill(raw: str) -> str:
+    """Map a skill typed by a student to its standard name, e.g. "Nextjs" -> "Next.js".
+
+    Unknown skills are returned unchanged (only trimmed), so nothing the student typed is lost.
+    """
+    value = " ".join(raw.split())
+    for name, pattern in _PATTERNS.items():
+        if pattern.fullmatch(value):
+            return name
+    return _SQUASHED.get(_squash(value), value)
+
+
+def normalize_skills(skills: list[str]) -> list[str]:
+    """Normalise a list and remove duplicates (keeping the first occurrence)."""
+    result: list[str] = []
+    for skill in skills:
+        name = normalize_skill(skill)
+        if name and name.lower() not in (s.lower() for s in result):
+            result.append(name)
+    return result
 
 
 def find_skills(text: str) -> list[str]:

@@ -14,10 +14,21 @@ suggestions and interview practice.
 |--------|--------|
 | **M1 – Authentication** | ✅ Register, login, logout, JWT-protected pages, brute-force protection ([docs](docs/modules/M1-authentication.md)) |
 | **M2 – Profile & Resume** | ✅ Education details, skills, PDF resume upload / download / delete ([docs](docs/modules/M2-profile-resume.md)) |
-| **M3 – Resume Analyzer (AI)** | ✅ First version: detects ~90 skills from resume text, connected to M2 |
-| M4 – Career & Skill Gap | Next |
+| **M3 – Resume Analyzer (AI)** | ✅ First version: detects ~90 skills from resume text and normalizes typed skills ("Nextjs" → "Next.js"), connected to M2 |
+| M4 – Career & Skill Gap | ⏳ Next (week 2) – placeholder page and planned API routes only |
+| M5 – Learning Roadmap (AI) | ⏳ Planned – placeholder page only |
+| M6 – Progress Dashboard | 🟡 Partly done – dashboard shows profile, skills and checklist; readiness score needs M4 |
+| M7 – Recommendations, M8 – Interview Prep | ⏳ Planned (Should Have) |
 
-**Tests:** 31 backend API tests + 11 AI service tests, all passing.
+**Tests:** 33 backend API tests + 15 AI service tests, all passing.
+
+### Known limitations (honest status)
+
+- Resumes are stored on the server's disk; deployment will need cloud storage (e.g. Cloudinary).
+- The login token is kept in `localStorage`; an HTTP-only cookie would be more secure in production.
+- The login rate limiter is in memory, so it resets when the server restarts.
+- Skill detection uses keyword rules, not an LLM yet; scanned (image-only) resumes cannot be read.
+- The app runs locally only; it has not been deployed yet.
 
 ## Architecture
 
@@ -140,7 +151,7 @@ Endpoints marked ✅ work now; the others return `501 Not Implemented` until the
 | POST | `/api/interview/answers` | Interview | JWT |
 
 AI service (internal, called by the backend): `GET /health` ✅, `POST /resume/analyze` ✅,
-`POST /roadmap/generate`, `POST /interview/evaluate`.
+`POST /skills/normalize` ✅, `POST /roadmap/generate`, `POST /interview/evaluate`.
 
 ## Development Sequence
 
@@ -201,8 +212,13 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 
 ### Run tests
 ```bash
-cd backend && npm test        # API tests: authentication (15) + profile & resume (16)
-cd ai-service && pytest       # resume parser tests (11)
+cd backend && npm test        # API tests: authentication (15) + profile & resume (18)
+cd ai-service && pytest       # skill detection and normalization tests (15)
+```
+
+### Maintenance scripts
+```bash
+cd backend && node scripts/normalize-skills.js   # one-time: convert saved skills to standard names
 ```
 
 ## Environment Variables
@@ -218,4 +234,19 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 4: Requirements analysis and module planning
 - [x] Phase 1 Day 5: **M1 Authentication** - register, login, logout, JWT-protected dashboard (12 passing tests)
 - [x] Phase 1 Day 6: **M1 improvements** (brute-force protection, 72-byte password limit, auto-logout) and **M2 Profile & Resume** connected to the **AI Resume Analyzer**
+- [x] Phase 1 Day 7: Project review – skill normalization fix, repository clean-up, status and next-week plan
+
+### Next week (Phase 1, week 2)
+
+| Day | Goal |
+|-----|------|
+| 1 | Research required skills for the 5 career roles; seed script for `CareerRole` |
+| 2 | `GET /api/career/roles`, role selection page, save target role |
+| 3 | Skill-gap logic (done / missing, match %) with unit tests |
+| 4 | Skill Gap results page; connect the readiness score to the dashboard |
+| 5 | LLM prompt + `/roadmap/generate` (JSON output, validation, error handling) |
+| 6 | Roadmap page with weekly tasks and progress saving |
+| 7 | Testing, bug fixes, README and weekly review |
+
 - [ ] M4 Career roles & Skill Gap Analysis
+- [ ] M5 Learning Roadmap (AI)

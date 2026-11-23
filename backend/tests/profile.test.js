@@ -19,15 +19,27 @@ function pdfForm(buffer = PDF, name = "my-resume.pdf", type = "application/pdf")
 }
 
 before(async () => {
-  // Fake Python AI service: always "detects" the same skills.
+  // Fake Python AI service:
+  //  - /resume/analyze always "detects" the same skills
+  //  - /skills/normalize knows two spellings and removes duplicates, like the real one
+  const STANDARD = { nextjs: "Next.js", javascript: "JavaScript" };
   fakeAI = http.createServer((req, res) => {
     if (aiMode === "down") {
       res.writeHead(500).end();
       return;
     }
-    req.resume();
+    let raw = "";
+    req.on("data", (chunk) => { if (req.url === "/skills/normalize") raw += chunk; });
     req.on("end", () => {
       res.writeHead(200, { "Content-Type": "application/json" });
+      if (req.url === "/skills/normalize") {
+        const out = [];
+        for (const s of JSON.parse(raw).skills) {
+          const name = STANDARD[s.toLowerCase().replace(/[^a-z0-9+#]/g, "")] || s;
+          if (!out.some((o) => o.toLowerCase() === name.toLowerCase())) out.push(name);
+        }
+        return res.end(JSON.stringify({ skills: out }));
+      }
       res.end(JSON.stringify({ skills: ["Python", "React", "MongoDB"], word_count: 120 }));
     });
   }).listen(0);
@@ -80,6 +92,19 @@ test("saves skills without duplicates (case-insensitive) and trims them", async 
   const res = await updateProfile({ skills: ["React", " react ", "Node.js", "", "  MongoDB  "] });
   assert.equal(res.status, 200);
   assert.deepEqual(res.body.user.skills, ["React", "Node.js", "MongoDB"]);
+});
+
+test("typed skills are converted to standard names by the AI service (no 'Nextjs' + 'Next.js')", async () => {
+  const res = await updateProfile({ skills: ["Nextjs", "Next.js", "javascript", "Nest.js"] });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body.user.skills, ["Next.js", "JavaScript", "Nest.js"]);
+});
+
+test("skills are still saved (as typed) when the AI service is down", async () => {
+  aiMode = "down";
+  const res = await updateProfile({ skills: ["Nextjs", "React"] });
+  assert.equal(res.status, 200);
+  assert.deepEqual(res.body.user.skills, ["Nextjs", "React"]);
 });
 
 test("a partial update does not erase other fields", async () => {

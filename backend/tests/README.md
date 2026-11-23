@@ -15,4 +15,4 @@ each test and dropped afterwards, so your development data is never touched. Sha
 | File | Covers |
 |------|--------|
 | `auth.test.js` | Register, login, password hashing, duplicate email, validation, 72-byte password limit, brute-force lock, JWT-protected routes, invalid JSON (15 tests) |
-| `profile.test.js` | Profile update and validation, skills de-duplication, resume upload with a fake AI service, AI service down, non-PDF / fake PDF / too large, download, delete, privacy between students (16 tests) |
+| `profile.test.js` | Profile update and validation, skills de-duplication, resume upload with a fake AI service, AI service down, non-PDF / fake PDF / too large, download, delete, privacy between students, skill normalization with and without the AI service (18 tests) |

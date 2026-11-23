@@ -60,3 +60,34 @@ def test_common_english_words_are_not_skills():
 
 def test_case_sensitive_technical_names_still_match():
     assert {"REST APIs", "Excel", "Node.js", "Express.js"} <= set(find_skills("Built REST services in Node and Express; reports in Excel"))
+
+
+# ---------- Skill normalisation (typed skills -> standard names)
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app.main import app  # noqa: E402
+from app.services.resume_parser import normalize_skill, normalize_skills  # noqa: E402
+
+
+def test_normalize_common_spellings():
+    assert normalize_skill("Nextjs") == "Next.js"
+    assert normalize_skill("Next JS") == "Next.js"
+    assert normalize_skill("javascript") == "JavaScript"
+    assert normalize_skill("FastApi") == "FastAPI"
+    assert normalize_skill("node") == "Node.js"
+    assert normalize_skill("c++") == "C++"
+
+
+def test_unknown_skills_are_kept_as_typed():
+    assert normalize_skill("  Kubeflow  ") == "Kubeflow"
+    assert normalize_skill("Rest   Framework") == "Rest Framework"
+
+
+def test_normalize_removes_duplicates_after_mapping():
+    assert normalize_skills(["Nextjs", "Next.js", "Javascript", "JavaScript", "React", "Nestjs"]) == ["Next.js", "JavaScript", "React", "NestJS"]
+
+
+def test_normalize_endpoint():
+    res = TestClient(app).post("/skills/normalize", json={"skills": ["nodejs", "Node.js", "Mongo"]})
+    assert res.status_code == 200
+    assert res.json() == {"skills": ["Node.js", "MongoDB"]}

@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import { validateProfile, cleanList } from "../utils/validators.js";
 import { saveResume, deleteResume, resumePath } from "../services/resumeStorage.js";
-import { analyzeResume, AIServiceError } from "../services/aiClient.js";
+import { analyzeResume, normalizeSkills, AIServiceError } from "../services/aiClient.js";
 
 const PROFILE_FIELDS = ["name", "university", "degree", "graduationYear", "skills", "interests"];
 
@@ -34,7 +34,8 @@ export async function updateProfile(req, res, next) {
     for (const field of PROFILE_FIELDS) {
       if (req.body[field] === undefined) continue;
       const value = req.body[field];
-      if (field === "skills" || field === "interests") user[field] = cleanList(value);
+      if (field === "skills") user.skills = cleanList(await normalizeSkills(cleanList(value)));
+      else if (field === "interests") user.interests = cleanList(value);
       else if (field === "graduationYear") user[field] = value === "" || value === null ? null : Number(value);
       else user[field] = value.trim();
     }

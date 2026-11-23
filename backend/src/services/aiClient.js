@@ -4,6 +4,24 @@ const TIMEOUT_MS = 15000; // NFR-01: AI requests must finish within 15 seconds
 
 export class AIServiceError extends Error {}
 
+// Converts typed skills to standard names ("Nextjs" -> "Next.js") and removes duplicates.
+// If the AI service is unavailable the skills are returned unchanged, so saving never fails.
+export async function normalizeSkills(skills) {
+  try {
+    const res = await fetch(`${aiUrl()}/skills/normalize`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skills }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return skills;
+    const data = await res.json();
+    return Array.isArray(data.skills) ? data.skills : skills;
+  } catch {
+    return skills;
+  }
+}
+
 // Sends a resume PDF to the AI service and returns the list of detected skills.
 export async function analyzeResume(buffer, originalName) {
   const form = new FormData();

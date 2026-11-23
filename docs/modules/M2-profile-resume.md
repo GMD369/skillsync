@@ -72,8 +72,16 @@ All routes require a valid JWT. Email and password cannot be changed through `/a
   "REST" but not "the rest of the team", "Excel" but not "I excel at", "Swift" but not "a swift learner".
 - "React Native" does not also count as "React" unless React appears separately.
 
+## Skill normalization (added Day 7)
+
+Skills typed by hand are sent to `POST /skills/normalize` before saving, so they use the same
+standard names as the resume analyzer: "Nextjs" → "Next.js", "javascript" → "JavaScript",
+"FastApi" → "FastAPI", "Nestjs" → "NestJS". Duplicates are removed after mapping; unknown skills
+are kept exactly as typed. If the AI service is not running, skills are saved as typed (3-second timeout).
+Existing profiles were cleaned once with `backend/scripts/normalize-skills.js`.
+
 ## Testing
 
-- `backend/tests/profile.test.js` – 16 tests (a fake AI service is started inside the test).
-- `ai-service/tests/test_resume_parser.py` – 11 tests.
+- `backend/tests/profile.test.js` – 18 tests (a fake AI service is started inside the test).
+- `ai-service/tests/test_resume_parser.py` – 15 tests (detection + normalization).
 - Manual end-to-end test with the real AI service: a sample resume returned 20 correct skills.
