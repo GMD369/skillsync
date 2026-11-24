@@ -15,12 +15,12 @@ suggestions and interview practice.
 | **M1 – Authentication** | ✅ Register, login, logout, JWT-protected pages, brute-force protection ([docs](docs/modules/M1-authentication.md)) |
 | **M2 – Profile & Resume** | ✅ Education details, skills, PDF resume upload / download / delete ([docs](docs/modules/M2-profile-resume.md)) |
 | **M3 – Resume Analyzer (AI)** | ✅ First version: detects ~90 skills from resume text and normalizes typed skills ("Nextjs" → "Next.js"), connected to M2 |
-| M4 – Career & Skill Gap | ⏳ Next (week 2) – placeholder page and planned API routes only |
+| **M4 – Career & Skill Gap** | ✅ Five seeded roles, target-role selection, skill comparison and match percentage ([docs](docs/modules/M4-career-skill-gap.md)) |
 | M5 – Learning Roadmap (AI) | ⏳ Planned – placeholder page only |
 | M6 – Progress Dashboard | 🟡 Partly done – dashboard shows profile, skills and checklist; readiness score needs M4 |
 | M7 – Recommendations, M8 – Interview Prep | ⏳ Planned (Should Have) |
 
-**Tests:** 33 backend API tests + 15 AI service tests, all passing.
+**Tests:** 42 backend API tests + 15 AI service tests, all passing.
 
 ### Known limitations (honest status)
 
@@ -80,7 +80,7 @@ An arrow from A to B means B needs A first. Critical path: **M1 → M2 → M4 �
 | 1 | **Authentication** | Register, login, password hashing, JWT tokens, protecting private routes | `backend/src/routes/auth.routes.js`, `middleware/auth.middleware.js`, `frontend/src/app/login`, `register` |
 | 2 | **Profile & Resume** | Student details and skills, resume upload, sending the resume for analysis | `backend/src/routes/profile.routes.js`, `models/User.js`, `frontend/src/app/profile` |
 | 3 | **Resume Analyzer (AI)** | Reads PDF text and detects skills | `ai-service/app/routers/resume.py`, `services/resume_parser.py` |
-| 4 | **Career & Skill Gap** | Career roles and their required skills; compares them with the student's skills | `backend/src/routes/career.routes.js`, `models/CareerRole.js`, `frontend/src/app/skill-gap` |
+| 4 | **Career & Skill Gap** | Career roles and their required skills; compares them with the student's skills | `backend/src/controllers/career.controller.js`, `models/CareerRole.js`, `frontend/src/app/skill-gap` |
 | 5 | **Learning Roadmap (AI)** | Generates and stores a weekly plan; students tick off tasks | `career.routes.js`, `models/Roadmap.js`, `ai-service/app/routers/roadmap.py`, `frontend/src/app/roadmap` |
 | 6 | **Recommendations** | Suggests portfolio projects and matching internships | `backend/src/routes/recommendation.routes.js` |
 | 7 | **Interview Preparation (AI)** | Role-based questions and AI feedback on answers | `backend/src/routes/interview.routes.js`, `ai-service/app/routers/interview.py` |
@@ -141,8 +141,9 @@ Endpoints marked ✅ work now; the others return `501 Not Implemented` until the
 | GET | `/api/auth/me` ✅ | Authentication | JWT |
 | GET / PUT | `/api/profile` ✅ | Profile | JWT |
 | POST / GET / DELETE | `/api/profile/resume` ✅ | Profile & Resume | JWT |
-| GET | `/api/career/roles` | Career | – |
-| GET | `/api/career/skill-gap` | Skill Gap | JWT |
+| GET | `/api/career/roles` ✅ | Career | – |
+| PUT | `/api/career/target-role` ✅ | Career | JWT |
+| GET | `/api/career/skill-gap` ✅ | Skill Gap | JWT |
 | GET / POST | `/api/career/roadmap` | Roadmap | JWT |
 | PATCH | `/api/career/roadmap/tasks/:taskId` | Roadmap | JWT |
 | GET | `/api/recommendations/projects` | Recommendations | JWT |
@@ -212,13 +213,14 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 
 ### Run tests
 ```bash
-cd backend && npm test        # API tests: authentication (15) + profile & resume (18)
+cd backend && npm test        # API tests: authentication (15) + profile/resume (18) + career/skill gap (9)
 cd ai-service && pytest       # skill detection and normalization tests (15)
 ```
 
 ### Maintenance scripts
 ```bash
 cd backend && node scripts/normalize-skills.js   # one-time: convert saved skills to standard names
+cd backend && npm run seed:roles                 # insert/update the five approved career roles
 ```
 
 ## Environment Variables
@@ -235,6 +237,7 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 5: **M1 Authentication** - register, login, logout, JWT-protected dashboard (12 passing tests)
 - [x] Phase 1 Day 6: **M1 improvements** (brute-force protection, 72-byte password limit, auto-logout) and **M2 Profile & Resume** connected to the **AI Resume Analyzer**
 - [x] Phase 1 Day 7: Project review – skill normalization fix, repository clean-up, status and next-week plan
+- [x] Phase 1 Day 8: **M4 Career & Skill Gap** – five career roles, goal selection, skill comparison, match percentage and dashboard integration
 
 ### Next week (Phase 1, week 2)
 
@@ -248,5 +251,5 @@ the frontend) and add your own values.
 | 6 | Roadmap page with weekly tasks and progress saving |
 | 7 | Testing, bug fixes, README and weekly review |
 
-- [ ] M4 Career roles & Skill Gap Analysis
+- [x] M4 Career roles & Skill Gap Analysis
 - [ ] M5 Learning Roadmap (AI)

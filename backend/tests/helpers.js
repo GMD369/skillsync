@@ -18,6 +18,7 @@ export async function setupTestApp(name) {
 
   const { default: app } = await import("../src/app.js");
   const { default: User } = await import("../src/models/User.js");
+  const { default: CareerRole } = await import("../src/models/CareerRole.js");
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
   await User.init();
 
@@ -45,5 +46,5 @@ export async function setupTestApp(name) {
     await fs.rm(process.env.UPLOAD_DIR, { recursive: true, force: true });
   }
 
-  return { app, User, call, teardown };
+  return { app, User, CareerRole, call, teardown };
 }

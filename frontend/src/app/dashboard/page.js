@@ -1,15 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, CalendarDays, Check, GraduationCap, Mail, Pencil, Sparkles, Target, Wrench } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate, initials } from "@/lib/format";
+import { apiRequest } from "@/lib/api";
 
 // Dashboard - only visible to logged-in students.
 // Shows live data from the Profile module (M2); readiness and roadmap come in M4-M6.
 function DashboardContent() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const [gapSummary, setGapSummary] = useState(null);
   const firstName = user.name.split(" ")[0];
   const skills = user.skills || [];
 
@@ -23,8 +26,22 @@ function DashboardContent() {
   const completed = checklist.filter((c) => c.done).length;
   const percent = Math.round((completed / checklist.length) * 100);
 
+  useEffect(() => {
+    if (!user.targetRole) return;
+    let active = true;
+    apiRequest("/career/skill-gap", { token })
+      .then((data) => { if (active) setGapSummary(data.summary); })
+      .catch(() => { /* The skill-gap page shows actionable API errors. */ });
+    return () => { active = false; };
+  }, [token, user.targetRole, user.skills]);
+
   const stats = [
-    { icon: Target, label: "Career readiness", value: "–", note: "Choose a career goal first" },
+    {
+      icon: Target,
+      label: "Career readiness",
+      value: gapSummary ? `${gapSummary.matchPercentage}%` : "–",
+      note: user.targetRole ? "Based on your current skill match" : "Choose a career goal first",
+    },
     {
       icon: Wrench, label: "Skills added", value: skills.length,
       note: user.resume ? `${user.resume.detectedSkills.length} detected in your resume` : "Add skills or upload your resume",
