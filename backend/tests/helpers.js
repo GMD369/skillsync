@@ -19,8 +19,9 @@ export async function setupTestApp(name) {
   const { default: app } = await import("../src/app.js");
   const { default: User } = await import("../src/models/User.js");
   const { default: CareerRole } = await import("../src/models/CareerRole.js");
+  const { default: Roadmap } = await import("../src/models/Roadmap.js");
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
-  await User.init();
+  await Promise.all([User.init(), CareerRole.init(), Roadmap.init()]);
 
   const server = app.listen(0);
   const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
@@ -46,5 +47,5 @@ export async function setupTestApp(name) {
     await fs.rm(process.env.UPLOAD_DIR, { recursive: true, force: true });
   }
 
-  return { app, User, CareerRole, call, teardown };
+  return { app, User, CareerRole, Roadmap, call, teardown };
 }

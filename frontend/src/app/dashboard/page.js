@@ -9,10 +9,11 @@ import { formatDate, initials } from "@/lib/format";
 import { apiRequest } from "@/lib/api";
 
 // Dashboard - only visible to logged-in students.
-// Shows live data from the Profile module (M2); readiness and roadmap come in M4-M6.
+// Shows live data from Profile (M2), Skill Gap (M4) and Roadmap (M5).
 function DashboardContent() {
   const { user, token } = useAuth();
   const [gapSummary, setGapSummary] = useState(null);
+  const [roadmapProgress, setRoadmapProgress] = useState(null);
   const firstName = user.name.split(" ")[0];
   const skills = user.skills || [];
 
@@ -21,7 +22,7 @@ function DashboardContent() {
     { label: "Complete your profile", done: user.profileComplete, href: "/profile" },
     { label: "Upload your resume", done: Boolean(user.resume), href: "/profile" },
     { label: "Choose a career goal", done: Boolean(user.targetRole), href: "/skill-gap" },
-    { label: "Generate your learning roadmap", done: false, href: "/roadmap" },
+    { label: "Generate your learning roadmap", done: Boolean(roadmapProgress), href: "/roadmap" },
   ];
   const completed = checklist.filter((c) => c.done).length;
   const percent = Math.round((completed / checklist.length) * 100);
@@ -35,6 +36,14 @@ function DashboardContent() {
     return () => { active = false; };
   }, [token, user.targetRole, user.skills]);
 
+  useEffect(() => {
+    let active = true;
+    apiRequest("/career/roadmap", { token })
+      .then((data) => { if (active) setRoadmapProgress(data.roadmap.progress); })
+      .catch(() => { /* 404 = no roadmap yet */ });
+    return () => { active = false; };
+  }, [token]);
+
   const stats = [
     {
       icon: Target,
@@ -46,7 +55,13 @@ function DashboardContent() {
       icon: Wrench, label: "Skills added", value: skills.length,
       note: user.resume ? `${user.resume.detectedSkills.length} detected in your resume` : "Add skills or upload your resume",
     },
-    { icon: CalendarDays, label: "Member since", value: formatDate(user.createdAt), note: "Welcome to SkillSync" },
+    {
+      icon: CalendarDays, label: "Roadmap progress",
+      value: roadmapProgress ? `${roadmapProgress.percentage}%` : "–",
+      note: roadmapProgress
+        ? `${roadmapProgress.doneTasks} of ${roadmapProgress.totalTasks} tasks done`
+        : `Member since ${formatDate(user.createdAt)}`,
+    },
   ];
 
   return (

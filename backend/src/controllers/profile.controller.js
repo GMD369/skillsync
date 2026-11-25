@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Roadmap from "../models/Roadmap.js";
 import { validateProfile, cleanList } from "../utils/validators.js";
 import { saveResume, deleteResume, resumePath } from "../services/resumeStorage.js";
 import { analyzeResume, normalizeSkills, AIServiceError } from "../services/aiClient.js";
@@ -122,6 +123,30 @@ export async function removeResume(req, res, next) {
     user.resume = null;
     await user.save();
     res.json({ message: "Resume deleted", user });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/profile - delete the account and everything stored for it (NFR-09 privacy).
+// The password is asked again so a stolen, still-open session cannot delete the account.
+export async function deleteAccount(req, res, next) {
+  try {
+    const { password } = req.body || {};
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({ message: "Enter your password to delete your account", errors: { password: "Password is required" } });
+    }
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) return res.status(401).json({ message: "Account no longer exists" });
+    if (!(await user.comparePassword(password))) {
+      return res.status(400).json({ message: "Incorrect password", errors: { password: "Incorrect password" } });
+    }
+
+    // Remove the related data first, then the user document.
+    await Roadmap.deleteMany({ user: user._id });
+    if (user.resume?.fileName) await deleteResume(user.resume.fileName);
+    await user.deleteOne();
+    res.json({ message: "Your account and all your data have been deleted" });
   } catch (err) {
     next(err);
   }

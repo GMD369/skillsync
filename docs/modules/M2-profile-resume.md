@@ -13,6 +13,8 @@ NFR-06 (reliability), NFR-09 (privacy)
   which reads the text and detects skills.
 - New detected skills are shown as suggestions; the student **chooses which ones to add**.
 - The student can **download** or **delete** their resume.
+- The student can **delete their account** (password required). The user document, the resume file and
+  the learning roadmap are all removed (added Day 9).
 - The **dashboard** shows the live profile: education, skills, checklist progress.
 
 ## How the features are connected
@@ -43,6 +45,7 @@ If the AI service is down, the resume is still saved and the student sees a frie
 | POST | `/api/profile/resume` | multipart field `resume` (PDF) | `{ analysis, detectedSkills, newSkills, user }` |
 | GET | `/api/profile/resume` | – | downloads your own PDF |
 | DELETE | `/api/profile/resume` | – | deletes the file and resume data |
+| DELETE | `/api/profile` | `{ password }` | deletes the account, resume file and roadmap |
 
 All routes require a valid JWT. Email and password cannot be changed through `/api/profile`.
 
@@ -82,6 +85,6 @@ Existing profiles were cleaned once with `backend/scripts/normalize-skills.js`.
 
 ## Testing
 
-- `backend/tests/profile.test.js` – 18 tests (a fake AI service is started inside the test).
+- `backend/tests/profile.test.js` – 20 tests (a fake AI service is started inside the test).
 - `ai-service/tests/test_resume_parser.py` – 15 tests (detection + normalization).
 - Manual end-to-end test with the real AI service: a sample resume returned 20 correct skills.

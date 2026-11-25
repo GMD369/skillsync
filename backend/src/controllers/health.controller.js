@@ -6,5 +6,6 @@ export function getHealth(req, res) {
     status: "ok",
     service: "skillsync-backend",
     database: mongoose.connection.readyState === 1 ? "connected" : "not connected",
+    databaseName: mongoose.connection.name || null,
   });
 }

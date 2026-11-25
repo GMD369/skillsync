@@ -3,6 +3,9 @@
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import path from "node:path";
+import fs from "node:fs/promises";
+import mongoose from "mongoose";
 import { setupTestApp } from "./helpers.js";
 
 let ctx;
@@ -200,4 +203,26 @@ test("students cannot see each other's resumes", async () => {
   });
   const res = await ctx.call("GET", "/profile/resume", { token: other.body.token });
   assert.equal(res.status, 404, "the other student only ever gets their own (empty) resume");
+});
+
+test("account deletion needs the correct password", async () => {
+  assert.equal((await ctx.call("DELETE", "/profile", { token, body: {} })).status, 400);
+  const wrong = await ctx.call("DELETE", "/profile", { token, body: { password: "wrong-password" } });
+  assert.equal(wrong.status, 400);
+  assert.equal(await ctx.User.countDocuments(), 1, "nothing is deleted with a wrong password");
+});
+
+test("deleting the account removes the user, the resume file and the roadmap", async () => {
+  await upload(pdfForm());
+  const user = await ctx.User.findOne({ email: "profile@example.com" });
+  const filePath = path.join(process.env.UPLOAD_DIR, user.resume.fileName);
+  await fs.access(filePath); // the file exists before deletion
+  await ctx.Roadmap.create({ user: user._id, role: new mongoose.Types.ObjectId(), weeks: [] });
+
+  const res = await ctx.call("DELETE", "/profile", { token, body: { password: "secret123" } });
+  assert.equal(res.status, 200);
+  assert.equal(await ctx.User.countDocuments(), 0);
+  assert.equal(await ctx.Roadmap.countDocuments(), 0);
+  await assert.rejects(fs.access(filePath), "the resume file is removed from disk");
+  assert.equal((await ctx.call("GET", "/profile", { token })).status, 401, "the old token no longer works");
 });

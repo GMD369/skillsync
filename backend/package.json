@@ -6,7 +6,9 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "node --test tests/",
-    "seed:roles": "node scripts/seed-career-roles.js"
+    "seed:roles": "node scripts/seed-career-roles.js",
+    "db:overview": "node scripts/db-overview.js",
+    "db:crud-demo": "node scripts/crud-demo.js"
   },
   "keywords": [],
   "author": "",

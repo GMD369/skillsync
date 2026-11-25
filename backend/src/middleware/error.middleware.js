@@ -18,7 +18,8 @@ export function errorHandler(err, req, res, next) {
   }
   // MongoDB unique index violation (e.g. two sign-ups with the same email at the same time)
   if (err.code === 11000) {
-    return res.status(409).json({ message: "An account with this email already exists" });
+    const message = err.keyPattern?.email ? "An account with this email already exists" : "This record already exists";
+    return res.status(409).json({ message });
   }
   const status = err.status || 500;
   if (status >= 500) console.error(err);

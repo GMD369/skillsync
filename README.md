@@ -16,11 +16,12 @@ suggestions and interview practice.
 | **M2 – Profile & Resume** | ✅ Education details, skills, PDF resume upload / download / delete ([docs](docs/modules/M2-profile-resume.md)) |
 | **M3 – Resume Analyzer (AI)** | ✅ First version: detects ~90 skills from resume text and normalizes typed skills ("Nextjs" → "Next.js"), connected to M2 |
 | **M4 – Career & Skill Gap** | ✅ Five seeded roles, target-role selection, skill comparison and match percentage ([docs](docs/modules/M4-career-skill-gap.md)) |
-| M5 – Learning Roadmap (AI) | ⏳ Planned – placeholder page only |
-| M6 – Progress Dashboard | 🟡 Partly done – dashboard shows profile, skills and checklist; readiness score needs M4 |
+| **M5 – Learning Roadmap** | 🟡 Database layer done: create / read / update tasks / delete, progress tracking ([docs](docs/modules/M5-learning-roadmap.md)); tasks come from templates – AI generation is next |
+| M6 – Progress Dashboard | 🟡 Partly done – profile, skills, checklist, career readiness (M4) and roadmap progress (M5) |
 | M7 – Recommendations, M8 – Interview Prep | ⏳ Planned (Should Have) |
 
-**Tests:** 42 backend API tests + 15 AI service tests, all passing.
+**Tests:** 57 backend API tests + 15 AI service tests, all passing.
+**Database:** MongoDB with 3 collections (`users`, `careerroles`, `roadmaps`) – see **[docs/DATABASE.md](docs/DATABASE.md)**.
 
 ### Known limitations (honest status)
 
@@ -28,6 +29,7 @@ suggestions and interview practice.
 - The login token is kept in `localStorage`; an HTTP-only cookie would be more secure in production.
 - The login rate limiter is in memory, so it resets when the server restarts.
 - Skill detection uses keyword rules, not an LLM yet; scanned (image-only) resumes cannot be read.
+- Roadmap tasks are generic templates per skill; personalized AI tasks with resources are not built yet.
 - The app runs locally only; it has not been deployed yet.
 
 ## Architecture
@@ -42,6 +44,16 @@ SkillSync uses a simple **three-tier architecture** with a separate AI service:
 - **AI Service** (FastAPI) handles resume analysis and LLM tasks. Keeping it separate lets it use
   Python's AI libraries and change without touching the main API.
 - **MongoDB Atlas** stores users, career roles and roadmaps. **Cloudinary** stores resume files.
+
+### Database
+
+![SkillSync database schema](docs/diagrams/database.png)
+
+MongoDB (local in development, Atlas for deployment) with three collections: **users** (account,
+profile, embedded resume details), **careerroles** (required skills per role) and **roadmaps** (weekly
+plan with tasks). Collections are linked by `ObjectId` references; unique indexes on `users.email`,
+`careerroles.title` and `roadmaps.user`. Full design, field types and CRUD operations:
+[docs/DATABASE.md](docs/DATABASE.md).
 
 ### User Workflow
 
@@ -139,13 +151,13 @@ Endpoints marked ✅ work now; the others return `501 Not Implemented` until the
 | POST | `/api/auth/register` ✅ | Authentication | – |
 | POST | `/api/auth/login` ✅ | Authentication | – |
 | GET | `/api/auth/me` ✅ | Authentication | JWT |
-| GET / PUT | `/api/profile` ✅ | Profile | JWT |
+| GET / PUT / DELETE | `/api/profile` ✅ (DELETE = delete account) | Profile | JWT |
 | POST / GET / DELETE | `/api/profile/resume` ✅ | Profile & Resume | JWT |
 | GET | `/api/career/roles` ✅ | Career | – |
 | PUT | `/api/career/target-role` ✅ | Career | JWT |
 | GET | `/api/career/skill-gap` ✅ | Skill Gap | JWT |
-| GET / POST | `/api/career/roadmap` | Roadmap | JWT |
-| PATCH | `/api/career/roadmap/tasks/:taskId` | Roadmap | JWT |
+| GET / POST / DELETE | `/api/career/roadmap` ✅ | Roadmap | JWT |
+| PATCH | `/api/career/roadmap/tasks/:taskId` ✅ | Roadmap | JWT |
 | GET | `/api/recommendations/projects` | Recommendations | JWT |
 | GET | `/api/recommendations/internships` | Recommendations | JWT |
 | GET | `/api/interview/questions` | Interview | JWT |
@@ -213,14 +225,18 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 
 ### Run tests
 ```bash
-cd backend && npm test        # API tests: authentication (15) + profile/resume (18) + career/skill gap (9)
+cd backend && npm test        # API tests: auth (15) + profile/resume/account (20) + career (9) + roadmap (13)
 cd ai-service && pytest       # skill detection and normalization tests (15)
 ```
 
 ### Maintenance scripts
 ```bash
-cd backend && node scripts/normalize-skills.js   # one-time: convert saved skills to standard names
-cd backend && npm run seed:roles                 # insert/update the five approved career roles
+cd backend
+npm run seed:roles                 # insert/update the five approved career roles
+npm run db:overview                # show collections, counts, indexes and sample documents (secrets hidden)
+npm run db:crud-demo               # Create / Read / Update / Delete on a temporary student, then clean up
+node scripts/normalize-skills.js   # one-time: convert saved skills to standard names
+node scripts/remove-old-fields.js  # one-time: remove unused fields from the first User schema
 ```
 
 ## Environment Variables
@@ -238,6 +254,7 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 6: **M1 improvements** (brute-force protection, 72-byte password limit, auto-logout) and **M2 Profile & Resume** connected to the **AI Resume Analyzer**
 - [x] Phase 1 Day 7: Project review – skill normalization fix, repository clean-up, status and next-week plan
 - [x] Phase 1 Day 8: **M4 Career & Skill Gap** – five career roles, goal selection, skill comparison, match percentage and dashboard integration
+- [x] Phase 1 Day 9: **Database design & integration** – schema diagram, indexes and validation, roadmap CRUD (M5 data layer), account deletion with related data, database scripts and [documentation](docs/DATABASE.md)
 
 ### Next week (Phase 1, week 2)
 
@@ -252,4 +269,5 @@ the frontend) and add your own values.
 | 7 | Testing, bug fixes, README and weekly review |
 
 - [x] M4 Career roles & Skill Gap Analysis
-- [ ] M5 Learning Roadmap (AI)
+- [x] M5 Learning Roadmap – database, API and page (template tasks)
+- [ ] M5 AI roadmap generation (`/roadmap/generate` with an LLM)

@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import CareerRole from "../models/CareerRole.js";
 import User from "../models/User.js";
+import Roadmap from "../models/Roadmap.js";
+import { compareSkills, buildRoadmapWeeks } from "../services/skillGap.js";
 
 function roleView(role) {
   return {
@@ -56,27 +58,96 @@ export async function getSkillGap(req, res, next) {
     if (!user.targetRole) {
       return res.status(400).json({ message: "Choose a career role before viewing your skill gap" });
     }
+    const roadmap = await Roadmap.findOne({ user: user._id, role: user.targetRole._id });
+    res.json({ role: roleView(user.targetRole), ...compareSkills(user.skills, user.targetRole, roadmap) });
+  } catch (err) {
+    next(err);
+  }
+}
 
-    const current = new Set(user.skills.map((skill) => skill.trim().toLowerCase()));
-    const skills = user.targetRole.requiredSkills.map((required) => ({
-      name: required.name,
-      level: required.level,
-      status: current.has(required.name.trim().toLowerCase()) ? "done" : "missing",
-    }));
-    const done = skills.filter((skill) => skill.status === "done").length;
-    const total = skills.length;
+// ---------------------------------------------------------------------------
+// Learning roadmap (M5) - full CRUD on the "roadmaps" collection.
+// Tasks come from templates for now; the AI generator will replace buildRoadmapWeeks().
+// ---------------------------------------------------------------------------
 
-    res.json({
-      role: roleView(user.targetRole),
-      summary: {
-        total,
-        done,
-        inProgress: 0,
-        missing: total - done,
-        matchPercentage: total ? Math.round((done / total) * 100) : 0,
-      },
-      skills,
-    });
+function roadmapView(roadmap, user) {
+  return {
+    roadmap: { ...roadmap.toJSON(), progress: roadmap.progress() },
+    // true when the student changed their target role after creating this roadmap
+    outdated: String(roadmap.role._id ?? roadmap.role) !== String(user.targetRole?._id ?? user.targetRole),
+  };
+}
+
+// POST /api/career/roadmap - CREATE (replaces an existing roadmap for the student)
+export async function createRoadmap(req, res, next) {
+  try {
+    const user = await User.findById(req.user.id).populate("targetRole");
+    if (!user) return res.status(401).json({ message: "Account no longer exists" });
+    if (!user.targetRole) {
+      return res.status(400).json({ message: "Choose a career role before creating a roadmap" });
+    }
+    const { skills } = compareSkills(user.skills, user.targetRole);
+    const weeks = buildRoadmapWeeks(skills);
+    if (!weeks.length) {
+      return res.status(400).json({ message: "You already have every skill for this role. No roadmap is needed." });
+    }
+
+    await Roadmap.deleteOne({ user: user._id }); // one roadmap per student
+    const roadmap = await Roadmap.create({ user: user._id, role: user.targetRole._id, source: "rules", weeks });
+    await roadmap.populate("role", "title");
+    res.status(201).json({ message: `Roadmap created with ${weeks.length} weeks`, ...roadmapView(roadmap, user) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/career/roadmap - READ
+export async function getRoadmap(req, res, next) {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).json({ message: "Account no longer exists" });
+    const roadmap = await Roadmap.findOne({ user: user._id }).populate("role", "title");
+    if (!roadmap) return res.status(404).json({ message: "You have not created a roadmap yet" });
+    res.json(roadmapView(roadmap, user));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PATCH /api/career/roadmap/tasks/:taskId - UPDATE one task ({ done: true | false })
+export async function updateRoadmapTask(req, res, next) {
+  try {
+    const { done } = req.body || {};
+    if (typeof done !== "boolean") {
+      return res.status(400).json({ message: "done must be true or false", errors: { done: "Must be true or false" } });
+    }
+    if (!mongoose.isValidObjectId(req.params.taskId)) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(401).json({ message: "Account no longer exists" });
+
+    // Only the student's own roadmap is searched, so nobody can change another student's tasks.
+    const roadmap = await Roadmap.findOne({ user: user._id, "weeks.tasks._id": req.params.taskId });
+    if (!roadmap) return res.status(404).json({ message: "Task not found" });
+
+    const task = roadmap.weeks.flatMap((w) => w.tasks).find((t) => t._id.equals(req.params.taskId));
+    task.done = done;
+    task.doneAt = done ? new Date() : null;
+    await roadmap.save();
+    await roadmap.populate("role", "title");
+    res.json({ message: done ? "Task completed" : "Task marked as not done", task, ...roadmapView(roadmap, user) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/career/roadmap - DELETE
+export async function deleteRoadmap(req, res, next) {
+  try {
+    const result = await Roadmap.deleteOne({ user: req.user.id });
+    if (!result.deletedCount) return res.status(404).json({ message: "You have not created a roadmap yet" });
+    res.json({ message: "Roadmap deleted" });
   } catch (err) {
     next(err);
   }

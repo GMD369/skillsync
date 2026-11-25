@@ -12,8 +12,9 @@
 - Returns each required skill's level and status, plus matched/missing counts and a match percentage.
 - Displays the result on the Skill Gap page and reuses the percentage on the Dashboard.
 
-`inProgress` is currently zero because SkillSync does not yet collect skill proficiency or roadmap
-progress. M5 will provide that evidence; the application does not guess a student's proficiency.
+Since Day 9, a missing skill is counted as **in progress** when the student has finished at least one
+roadmap task for it (M5). The comparison logic lives in `backend/src/services/skillGap.js` and is shared
+with the roadmap. The application does not guess a student's proficiency.
 
 ## Flow
 

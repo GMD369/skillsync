@@ -5,6 +5,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import ProfileDetailsCard from "@/components/profile/ProfileDetailsCard";
 import SkillsCard from "@/components/profile/SkillsCard";
 import ResumeCard from "@/components/profile/ResumeCard";
+import DeleteAccountCard from "@/components/profile/DeleteAccountCard";
 import { useAuth } from "@/context/AuthContext";
 
 // Profile & Resume module (M2) - connected to the AI Resume Analyzer (M3).
@@ -41,6 +42,9 @@ function ProfileContent() {
         <SkillsCard />
         <div className="lg:col-span-2">
           <ResumeCard />
+        </div>
+        <div className="lg:col-span-2">
+          <DeleteAccountCard />
         </div>
       </div>
     </main>
