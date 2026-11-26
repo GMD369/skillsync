@@ -11,6 +11,7 @@ dotenv.config({ quiet: true });
 
 export async function setupTestApp(name) {
   process.env.JWT_SECRET = "test_secret_for_automated_tests_only";
+  process.env.LOG_REQUESTS = "false";
   process.env.UPLOAD_DIR = path.join(os.tmpdir(), `skillsync-test-uploads-${name}-${process.pid}`);
 
   const base = process.env.TEST_MONGO_URI || "mongodb://127.0.0.1:27017/skillsync_test";
@@ -20,8 +21,9 @@ export async function setupTestApp(name) {
   const { default: User } = await import("../src/models/User.js");
   const { default: CareerRole } = await import("../src/models/CareerRole.js");
   const { default: Roadmap } = await import("../src/models/Roadmap.js");
+  const { default: Project } = await import("../src/models/Project.js");
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
-  await Promise.all([User.init(), CareerRole.init(), Roadmap.init()]);
+  await Promise.all([User.init(), CareerRole.init(), Roadmap.init(), Project.init()]);
 
   const server = app.listen(0);
   const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
@@ -47,5 +49,5 @@ export async function setupTestApp(name) {
     await fs.rm(process.env.UPLOAD_DIR, { recursive: true, force: true });
   }
 
-  return { app, User, CareerRole, Roadmap, call, teardown };
+  return { app, User, CareerRole, Roadmap, Project, call, teardown };
 }

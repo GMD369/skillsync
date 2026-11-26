@@ -17,11 +17,13 @@ suggestions and interview practice.
 | **M3 – Resume Analyzer (AI)** | ✅ First version: detects ~90 skills from resume text and normalizes typed skills ("Nextjs" → "Next.js"), connected to M2 |
 | **M4 – Career & Skill Gap** | ✅ Five seeded roles, target-role selection, skill comparison and match percentage ([docs](docs/modules/M4-career-skill-gap.md)) |
 | **M5 – Learning Roadmap** | 🟡 Database layer done: create / read / update tasks / delete, progress tracking ([docs](docs/modules/M5-learning-roadmap.md)); tasks come from templates – AI generation is next |
-| M6 – Progress Dashboard | 🟡 Partly done – profile, skills, checklist, career readiness (M4) and roadmap progress (M5) |
-| M7 – Recommendations, M8 – Interview Prep | ⏳ Planned (Should Have) |
+| **M6 – Progress Dashboard** | 🟡 One summary API (`GET /api/dashboard`): readiness, current roadmap week, next task, checklist ([docs](docs/modules/M6-progress-dashboard.md)); progress chart still to do |
+| **M7 – Recommendations** | 🟡 Project ideas ranked by the skills you are missing ([docs](docs/modules/M7-recommendations.md)); internships planned |
+| M8 – Interview Prep | ⏳ Planned (Should Have) |
 
-**Tests:** 57 backend API tests + 15 AI service tests, all passing.
-**Database:** MongoDB with 3 collections (`users`, `careerroles`, `roadmaps`) – see **[docs/DATABASE.md](docs/DATABASE.md)**.
+**Tests:** 71 backend API tests + 15 AI service tests, all passing. `npm run api:check` tests all endpoints against the running server (41 checks).
+**API:** 21 working endpoints – full reference in **[docs/API.md](docs/API.md)**, Postman collection in [docs/api/](docs/api/SkillSync.postman_collection.json).
+**Database:** MongoDB with 4 collections (`users`, `careerroles`, `roadmaps`, `projects`) – see **[docs/DATABASE.md](docs/DATABASE.md)**.
 
 ### Known limitations (honest status)
 
@@ -43,15 +45,15 @@ SkillSync uses a simple **three-tier architecture** with a separate AI service:
   service when AI work is needed.
 - **AI Service** (FastAPI) handles resume analysis and LLM tasks. Keeping it separate lets it use
   Python's AI libraries and change without touching the main API.
-- **MongoDB Atlas** stores users, career roles and roadmaps. **Cloudinary** stores resume files.
+- **MongoDB Atlas** stores users, career roles, roadmaps and project ideas. **Cloudinary** stores resume files.
 
 ### Database
 
 ![SkillSync database schema](docs/diagrams/database.png)
 
-MongoDB (local in development, Atlas for deployment) with three collections: **users** (account,
-profile, embedded resume details), **careerroles** (required skills per role) and **roadmaps** (weekly
-plan with tasks). Collections are linked by `ObjectId` references; unique indexes on `users.email`,
+MongoDB (local in development, Atlas for deployment) with four collections: **users** (account,
+profile, embedded resume details), **careerroles** (required skills per role), **roadmaps** (weekly
+plan with tasks) and **projects** (portfolio ideas with skills, added on Day 10). Collections are linked by `ObjectId` references; unique indexes on `users.email`,
 `careerroles.title` and `roadmaps.user`. Full design, field types and CRUD operations:
 [docs/DATABASE.md](docs/DATABASE.md).
 
@@ -108,7 +110,7 @@ skillsync/
 │       ├── app/                 pages (App Router: one folder = one route)
 │       │   ├── page.js          landing page
 │       │   ├── layout.js        shared layout with navbar
-│       │   ├── login/  register/  dashboard/  profile/  skill-gap/  roadmap/
+│       │   ├── login/  register/  dashboard/  profile/  skill-gap/  roadmap/  projects/
 │       ├── components/
 │       │   ├── layout/          Navbar and page layout parts
 │       │   └── ui/              reusable UI elements (Button, ...)
@@ -117,15 +119,18 @@ skillsync/
 │
 ├── backend/                     Node.js + Express REST API
 │   ├── src/
-│   │   ├── server.js            app entry point
-│   │   ├── config/              database connection
-│   │   ├── routes/              one file per module, combined in index.js
-│   │   ├── controllers/         request handling logic
-│   │   ├── middleware/          JWT auth, error handling
-│   │   ├── models/              Mongoose schemas (User, CareerRole, Roadmap)
-│   │   ├── services/            calls to external services (AI service)
-│   │   └── utils/               small shared helpers
-│   └── tests/                   API tests
+│   │   ├── server.js            entry point: loads .env, connects to MongoDB, starts the server
+│   │   ├── app.js               Express app: logger → CORS → JSON parser → /api routes → 404 → error handler
+│   │   ├── config/db.js         database connection
+│   │   ├── routes/              one file per module (auth, profile, career, dashboard, recommendations, ...)
+│   │   ├── controllers/         request handling: validate → database → JSON response
+│   │   ├── middleware/          JWT auth, login rate limit, PDF upload, request logger, errors
+│   │   ├── models/              Mongoose schemas: User, CareerRole, Roadmap, Project
+│   │   ├── services/            skill gap, project ranking, AI-service client, resume storage
+│   │   ├── data/                seed data (project ideas)
+│   │   └── utils/               validators, JWT helper
+│   ├── scripts/                 seed, database and API-check scripts
+│   └── tests/                   API tests (node:test, 71 tests)
 │
 ├── ai-service/                  Python + FastAPI
 │   ├── app/
@@ -136,18 +141,19 @@ skillsync/
 │   ├── tests/                   pytest tests
 │   └── requirements.txt
 │
-├── docs/                        diagrams and planning documents
+├── docs/                        API reference, database design, module docs, diagrams, Postman collection
 ├── .gitignore
 └── README.md
 ```
 
-## API Endpoints (planned)
+## API Endpoints
 
-Endpoints marked ✅ work now; the others return `501 Not Implemented` until their module is built.
+Base URL `http://localhost:5000/api`. ✅ = working and tested; the others return `501 Not Implemented`
+until their module is built. Request/response examples and status codes: **[docs/API.md](docs/API.md)**.
 
 | Method | Endpoint | Module | Auth |
 |--------|----------|--------|------|
-| GET | `/api/health` ✅ | System | – |
+| GET | `/api/health` ✅ (API, database and AI service status) | System | – |
 | POST | `/api/auth/register` ✅ | Authentication | – |
 | POST | `/api/auth/login` ✅ | Authentication | – |
 | GET | `/api/auth/me` ✅ | Authentication | JWT |
@@ -158,10 +164,16 @@ Endpoints marked ✅ work now; the others return `501 Not Implemented` until the
 | GET | `/api/career/skill-gap` ✅ | Skill Gap | JWT |
 | GET / POST / DELETE | `/api/career/roadmap` ✅ | Roadmap | JWT |
 | PATCH | `/api/career/roadmap/tasks/:taskId` ✅ | Roadmap | JWT |
-| GET | `/api/recommendations/projects` | Recommendations | JWT |
+| GET | `/api/dashboard` ✅ | Dashboard | JWT |
+| GET | `/api/recommendations/projects` ✅ (`?level=`, `?limit=`) | Recommendations | JWT |
+| GET | `/api/recommendations/projects/:id` ✅ | Recommendations | JWT |
 | GET | `/api/recommendations/internships` | Recommendations | JWT |
 | GET | `/api/interview/questions` | Interview | JWT |
 | POST | `/api/interview/answers` | Interview | JWT |
+
+**Testing the API:** `npm test` (automated), `npm run api:check` (all endpoints against the running
+server), the [Postman collection](docs/api/SkillSync.postman_collection.json) (works in Postman and
+Thunder Client), or cURL.
 
 AI service (internal, called by the backend): `GET /health` ✅, `POST /resume/analyze` ✅,
 `POST /skills/normalize` ✅, `POST /roadmap/generate`, `POST /interview/evaluate`.
@@ -225,7 +237,8 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 
 ### Run tests
 ```bash
-cd backend && npm test        # API tests: auth (15) + profile/resume/account (20) + career (9) + roadmap (13)
+cd backend && npm test        # 71 API tests: auth 15, profile 20, career 9, roadmap 13, dashboard 6, recommendations 8
+cd backend && npm run api:check   # with the server running: 41 requests against every endpoint, then clean-up
 cd ai-service && pytest       # skill detection and normalization tests (15)
 ```
 
@@ -233,6 +246,7 @@ cd ai-service && pytest       # skill detection and normalization tests (15)
 ```bash
 cd backend
 npm run seed:roles                 # insert/update the five approved career roles
+npm run seed:projects              # insert/update the 21 portfolio project ideas (M7)
 npm run db:overview                # show collections, counts, indexes and sample documents (secrets hidden)
 npm run db:crud-demo               # Create / Read / Update / Delete on a temporary student, then clean up
 node scripts/normalize-skills.js   # one-time: convert saved skills to standard names
@@ -255,6 +269,7 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 7: Project review – skill normalization fix, repository clean-up, status and next-week plan
 - [x] Phase 1 Day 8: **M4 Career & Skill Gap** – five career roles, goal selection, skill comparison, match percentage and dashboard integration
 - [x] Phase 1 Day 9: **Database design & integration** – schema diagram, indexes and validation, roadmap CRUD (M5 data layer), account deletion with related data, database scripts and [documentation](docs/DATABASE.md)
+- [x] Phase 1 Day 10: **Backend development & API integration** – dashboard summary API (M6), project recommendations API with a new `projects` collection (M7), request logging, AI-service health check, [API reference](docs/API.md), Postman collection and an end-to-end API check (71 tests, 41 live checks)
 
 ### Next week (Phase 1, week 2)
 

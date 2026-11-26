@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, Map, Menu, Target, UserRound, X } from "lucide-react";
+import { FolderGit2, LayoutDashboard, LogOut, Map, Menu, Target, UserRound, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import Logo from "@/components/ui/Logo";
 import Button from "@/components/ui/Button";
@@ -14,6 +14,7 @@ const privateLinks = [
   { href: "/profile", label: "Profile", icon: UserRound },
   { href: "/skill-gap", label: "Skill Gap", icon: Target },
   { href: "/roadmap", label: "Roadmap", icon: Map },
+  { href: "/projects", label: "Projects", icon: FolderGit2 },
 ];
 
 // Login and register pages have their own full-screen layout.

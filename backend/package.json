@@ -7,8 +7,10 @@
     "start": "node src/server.js",
     "test": "node --test tests/",
     "seed:roles": "node scripts/seed-career-roles.js",
+    "seed:projects": "node scripts/seed-projects.js",
     "db:overview": "node scripts/db-overview.js",
-    "db:crud-demo": "node scripts/crud-demo.js"
+    "db:crud-demo": "node scripts/crud-demo.js",
+    "api:check": "node scripts/api-check.js"
   },
   "keywords": [],
   "author": "",

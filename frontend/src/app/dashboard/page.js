@@ -9,47 +9,41 @@ import { formatDate, initials } from "@/lib/format";
 import { apiRequest } from "@/lib/api";
 
 // Dashboard - only visible to logged-in students.
-// Shows live data from Profile (M2), Skill Gap (M4) and Roadmap (M5).
+// Readiness, roadmap progress and the checklist come from GET /api/dashboard (M6).
 function DashboardContent() {
   const { user, token } = useAuth();
-  const [gapSummary, setGapSummary] = useState(null);
-  const [roadmapProgress, setRoadmapProgress] = useState(null);
+  const [summary, setSummary] = useState(null);
   const firstName = user.name.split(" ")[0];
   const skills = user.skills || [];
 
-  const checklist = [
+  // One request returns readiness, roadmap progress and the checklist (GET /api/dashboard).
+  useEffect(() => {
+    let active = true;
+    apiRequest("/dashboard", { token })
+      .then((data) => { if (active) setSummary(data); })
+      .catch(() => { /* the cards show "–" until the API answers */ });
+    return () => { active = false; };
+  }, [token, user.targetRole, user.skills, user.resume]);
+
+  // Until the summary loads, show the checklist from the user data already in memory.
+  const checklist = summary?.checklist ?? [
     { label: "Create your account", done: true },
     { label: "Complete your profile", done: user.profileComplete, href: "/profile" },
     { label: "Upload your resume", done: Boolean(user.resume), href: "/profile" },
     { label: "Choose a career goal", done: Boolean(user.targetRole), href: "/skill-gap" },
-    { label: "Generate your learning roadmap", done: Boolean(roadmapProgress), href: "/roadmap" },
+    { label: "Generate your learning roadmap", done: false, href: "/roadmap" },
   ];
   const completed = checklist.filter((c) => c.done).length;
   const percent = Math.round((completed / checklist.length) * 100);
-
-  useEffect(() => {
-    if (!user.targetRole) return;
-    let active = true;
-    apiRequest("/career/skill-gap", { token })
-      .then((data) => { if (active) setGapSummary(data.summary); })
-      .catch(() => { /* The skill-gap page shows actionable API errors. */ });
-    return () => { active = false; };
-  }, [token, user.targetRole, user.skills]);
-
-  useEffect(() => {
-    let active = true;
-    apiRequest("/career/roadmap", { token })
-      .then((data) => { if (active) setRoadmapProgress(data.roadmap.progress); })
-      .catch(() => { /* 404 = no roadmap yet */ });
-    return () => { active = false; };
-  }, [token]);
+  const readiness = summary?.careerReadiness;
+  const roadmap = summary?.roadmap;
 
   const stats = [
     {
       icon: Target,
       label: "Career readiness",
-      value: gapSummary ? `${gapSummary.matchPercentage}%` : "–",
-      note: user.targetRole ? "Based on your current skill match" : "Choose a career goal first",
+      value: readiness?.matchPercentage != null ? `${readiness.matchPercentage}%` : "–",
+      note: readiness?.targetRole ? `Skill match for ${readiness.targetRole.title}` : "Choose a career goal first",
     },
     {
       icon: Wrench, label: "Skills added", value: skills.length,
@@ -57,10 +51,12 @@ function DashboardContent() {
     },
     {
       icon: CalendarDays, label: "Roadmap progress",
-      value: roadmapProgress ? `${roadmapProgress.percentage}%` : "–",
-      note: roadmapProgress
-        ? `${roadmapProgress.doneTasks} of ${roadmapProgress.totalTasks} tasks done`
-        : `Member since ${formatDate(user.createdAt)}`,
+      value: roadmap ? `${roadmap.progress.percentage}%` : "–",
+      note: !roadmap
+        ? `Member since ${formatDate(user.createdAt)}`
+        : roadmap.currentWeek
+          ? `Week ${roadmap.currentWeek.week} of ${roadmap.totalWeeks}: ${roadmap.currentWeek.skill}`
+          : "All tasks done",
     },
   ];
 

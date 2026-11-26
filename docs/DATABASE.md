@@ -24,6 +24,7 @@
 | **Resume** (embedded in User) | Original file name, size, upload date, skills detected by the AI service. The PDF itself is stored on disk | Resume upload (M2/M3) |
 | **CareerRole** | Title, description, required skills with level | Seed script `npm run seed:roles` (M4) |
 | **Roadmap** | Week-by-week plan for the student's missing skills, with tasks that can be ticked off | Roadmap page (M5) |
+| **Project** | Portfolio project idea: level, skills it practises, features, estimated hours | Seed script `npm run seed:projects` (M7, Day 10) |
 
 Not stored on purpose: plain-text passwords, JWT tokens (they are stateless), and the resume PDF itself
 (only a random file name that is never sent to the browser).
@@ -67,6 +68,19 @@ Not stored on purpose: plain-text passwords, JWT tokens (they are stateless), an
 | `weeks.tasks` | embedded array | `_id` (so one task can be updated), `title`, `done`, `doneAt` |
 | `createdAt`, `updatedAt` | Date | automatic |
 
+### `projects` (Day 10)
+
+| Field | Type | Rules |
+|---|---|---|
+| `_id` | ObjectId | Primary key |
+| `title` | String | required, **unique index**, max 80 |
+| `description` | String | required |
+| `level` | String | `beginner` \| `intermediate` \| `advanced` |
+| `skills` | [String] | at least one; same spelling as the career roles' skills |
+| `features` | [String] | what the finished project should include |
+| `estimatedHours` | Number | 1 to 200 |
+| `createdAt`, `updatedAt` | Date | automatic |
+
 ## Relationships
 
 | Relationship | Type | How it is stored |
@@ -76,6 +90,7 @@ Not stored on purpose: plain-text passwords, JWT tokens (they are stateless), an
 | CareerRole → Roadmap | one-to-many | `roadmaps.role` holds the role's `_id` |
 | User → Resume | one-to-zero-or-one | embedded inside the user document |
 | Roadmap → Weeks → Tasks | one-to-many | embedded arrays |
+| Project ↔ User | no stored link | matched at request time by skill names (`projects.skills` vs `users.skills` and the role's missing skills) |
 
 References are followed with Mongoose `populate()` (e.g. the roadmap response includes the role title).
 When an account is deleted, its roadmap and resume file are deleted first, so no orphan data remains.
@@ -87,6 +102,7 @@ When an account is deleted, its roadmap and resume file are deleted first, so no
 | users | `email` (unique) | fast login lookup; no duplicate accounts, even with two sign-ups at the same time |
 | careerroles | `title` (unique) | the seed script can run again without creating duplicates |
 | roadmaps | `user` (unique) | fast "get my roadmap"; one roadmap per student |
+| projects | `title` (unique) | the seed script can run again without creating duplicates |
 
 A duplicate-key error (code 11000) is turned into a friendly `409` response by the error middleware.
 
@@ -101,6 +117,10 @@ A duplicate-key error (code 11000) is turned into a friendly `409` response by t
 | **Read** | `GET /api/career/roles` (public) | `CareerRole.find().sort()` | careerroles |
 | **Read** | `GET /api/career/skill-gap` | `User.findById().populate("targetRole")` + `Roadmap.findOne()` | users, careerroles, roadmaps |
 | **Read** | `GET /api/career/roadmap` | `Roadmap.findOne({ user }).populate("role")` | roadmaps |
+| **Read** | `GET /api/dashboard` | `User.findById().populate("targetRole")` + `Roadmap.findOne({ user })` | users, careerroles, roadmaps |
+| **Read** | `GET /api/recommendations/projects` | `Project.find({ level? })`, then ranked by skill overlap | projects, users, careerroles |
+| **Read** | `GET /api/recommendations/projects/:id` | `Project.findById()` | projects |
+| **Create / Update** | `npm run seed:projects` | `Project.findOneAndUpdate(..., { upsert: true, runValidators: true })` | projects |
 | **Update** | `PUT /api/profile` | load → change fields → `user.save()` (validation runs) | users |
 | **Update** | `PUT /api/career/target-role` | `user.targetRole = role._id` → `save()` | users |
 | **Update** | `PATCH /api/career/roadmap/tasks/:taskId` | find task inside the student's own roadmap → `done`, `doneAt` → `save()` | roadmaps |
@@ -116,6 +136,7 @@ student can only read or change their own data. This is covered by automated tes
 ```bash
 cd backend
 npm run seed:roles                 # insert/update the 5 career roles
+npm run seed:projects              # insert/update the 21 project ideas
 npm run db:overview                # collections, document counts, indexes, one sample each (secrets hidden)
 npm run db:crud-demo               # runs Create, Read, Update, Delete on a temporary student, then removes it
 node scripts/normalize-skills.js   # one-time: standard skill names (Day 7)
@@ -135,4 +156,4 @@ node scripts/remove-old-fields.js  # one-time: removes unused fields from the fi
 
 `backend/tests/roadmap.test.js` (13 tests) covers Create, Read, Update and Delete on roadmaps, validation,
 privacy between students, the unique index and the link to the skill gap. `profile.test.js` covers account
-deletion, including removal of the roadmap and resume file. Total: **57 backend tests, all passing.**
+deletion, including removal of the roadmap and resume file. `recommendations.test.js` checks the `projects` validation and unique title. Total: **71 backend tests, all passing.**
