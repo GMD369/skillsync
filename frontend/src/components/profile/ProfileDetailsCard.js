@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BookOpen, CalendarDays, GraduationCap, Save, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { useSubmitLock } from "@/lib/useSubmitLock";
 import { validateProfileForm } from "@/lib/validators";
 import FormField from "@/components/ui/FormField";
 import TagInput from "@/components/ui/TagInput";
@@ -23,6 +24,7 @@ export default function ProfileDetailsCard() {
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState(null); // { type, text }
   const [saving, setSaving] = useState(false);
+  const lock = useSubmitLock();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -36,17 +38,19 @@ export default function ProfileDetailsCard() {
     setErrors(found);
     if (Object.keys(found).length) return;
 
-    setSaving(true);
-    try {
-      const data = await apiRequest("/profile", { method: "PUT", token, body: { ...form, interests } });
-      updateUser(data.user); // navbar + dashboard update immediately
-      setStatus({ type: "success", text: "Profile saved." });
-    } catch (err) {
-      setErrors(err.errors || {});
-      setStatus({ type: "error", text: err.message });
-    } finally {
-      setSaving(false);
-    }
+    await lock(async () => {
+      setSaving(true);
+      try {
+        const data = await apiRequest("/profile", { method: "PUT", token, body: { ...form, interests } });
+        updateUser(data.user); // navbar + dashboard update immediately
+        setStatus({ type: "success", text: "Profile saved." });
+      } catch (err) {
+        setErrors(err.errors || {});
+        setStatus({ type: "error", text: err.message });
+      } finally {
+        setSaving(false);
+      }
+    });
   };
 
   return (

@@ -7,12 +7,15 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { formatDate, initials } from "@/lib/format";
 import { apiRequest } from "@/lib/api";
+import LoadError from "@/components/ui/LoadError";
 
 // Dashboard - only visible to logged-in students.
 // Readiness, roadmap progress and the checklist come from GET /api/dashboard (M6).
 function DashboardContent() {
   const { user, token } = useAuth();
   const [summary, setSummary] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0); // changed by "Try again" to repeat the request
   const firstName = user.name.split(" ")[0];
   const skills = user.skills || [];
 
@@ -20,10 +23,13 @@ function DashboardContent() {
   useEffect(() => {
     let active = true;
     apiRequest("/dashboard", { token })
-      .then((data) => { if (active) setSummary(data); })
-      .catch(() => { /* the cards show "–" until the API answers */ });
+      .then((data) => { if (active) { setSummary(data); setLoadError(""); } })
+      .catch((err) => { if (active) setLoadError(err.message); });
     return () => { active = false; };
-  }, [token, user.targetRole, user.skills, user.resume]);
+  }, [token, user.targetRole, user.skills, user.resume, reloadKey]);
+
+  // "…" while the first request is running, "–" when there is no data yet (or it failed).
+  const pending = !summary && !loadError;
 
   // Until the summary loads, show the checklist from the user data already in memory.
   const checklist = summary?.checklist ?? [
@@ -42,7 +48,7 @@ function DashboardContent() {
     {
       icon: Target,
       label: "Career readiness",
-      value: readiness?.matchPercentage != null ? `${readiness.matchPercentage}%` : "–",
+      value: pending ? "…" : readiness?.matchPercentage != null ? `${readiness.matchPercentage}%` : "–",
       note: readiness?.targetRole ? `Skill match for ${readiness.targetRole.title}` : "Choose a career goal first",
     },
     {
@@ -51,7 +57,7 @@ function DashboardContent() {
     },
     {
       icon: CalendarDays, label: "Roadmap progress",
-      value: roadmap ? `${roadmap.progress.percentage}%` : "–",
+      value: pending ? "…" : roadmap ? `${roadmap.progress.percentage}%` : "–",
       note: !roadmap
         ? `Member since ${formatDate(user.createdAt)}`
         : roadmap.currentWeek
@@ -74,6 +80,16 @@ function DashboardContent() {
           </p>
         </div>
       </section>
+
+      {loadError && (
+        <div className="mt-7">
+          <LoadError
+            message={summary
+              ? `Your progress could not be refreshed, so the last loaded values are shown. ${loadError}`
+              : `Your progress could not be loaded. ${loadError}`}
+            onRetry={() => { setLoadError(""); setReloadKey((k) => k + 1); }} />
+        </div>
+      )}
 
       {/* Stat cards */}
       <section className="mt-7 grid gap-5 sm:grid-cols-3">

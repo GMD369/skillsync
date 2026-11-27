@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, Mail, User } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useSubmitLock } from "@/lib/useSubmitLock";
 import { validateRegisterForm } from "@/lib/validators";
 import AuthLayout from "@/components/auth/AuthLayout";
 import FormField from "@/components/ui/FormField";
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const lock = useSubmitLock();
 
   useEffect(() => {
     if (user) router.replace("/dashboard");
@@ -35,16 +37,18 @@ export default function RegisterPage() {
     setErrors(found);
     if (Object.keys(found).length) return;
 
-    setSubmitting(true);
-    try {
-      await register(form.name, form.email, form.password);
-      router.push("/dashboard");
-    } catch (err) {
-      setErrors(err.errors || {});
-      setServerError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    await lock(async () => {
+      setSubmitting(true);
+      try {
+        await register(form.name, form.email, form.password);
+        router.push("/dashboard");
+      } catch (err) {
+        setErrors(err.errors || {});
+        setServerError(err.message);
+      } finally {
+        setSubmitting(false);
+      }
+    });
   };
 
   return (

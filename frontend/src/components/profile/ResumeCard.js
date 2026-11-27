@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiDownload, apiRequest } from "@/lib/api";
 import { formatBytes, formatDate } from "@/lib/format";
 import { validateResumeFile } from "@/lib/validators";
+import { useSubmitLock } from "@/lib/useSubmitLock";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 
@@ -19,10 +20,11 @@ export default function ResumeCard() {
   const [status, setStatus] = useState(null);
   const [suggestions, setSuggestions] = useState([]); // detected skills not yet in the profile
   const [selected, setSelected] = useState([]);
+  const lock = useSubmitLock(); // upload, add and delete never run at the same time
 
   const resume = user.resume;
 
-  const upload = async (file) => {
+  const upload = (file) => lock(async () => {
     setStatus(null);
     const problem = validateResumeFile(file);
     if (problem) return setStatus({ type: "error", text: problem });
@@ -42,9 +44,9 @@ export default function ResumeCard() {
       setBusy(null);
       if (inputRef.current) inputRef.current.value = "";
     }
-  };
+  });
 
-  const addSelected = async () => {
+  const addSelected = () => lock(async () => {
     setBusy("add");
     try {
       const data = await apiRequest("/profile", { method: "PUT", token, body: { skills: [...user.skills, ...selected] } });
@@ -57,21 +59,23 @@ export default function ResumeCard() {
     } finally {
       setBusy(null);
     }
-  };
+  });
 
-  const remove = async () => {
+  const remove = () => {
     if (!window.confirm("Delete your uploaded resume? Your saved skills will not be removed.")) return;
-    setBusy("delete");
-    try {
-      const data = await apiRequest("/profile/resume", { method: "DELETE", token });
-      updateUser(data.user);
-      setSuggestions([]);
-      setStatus({ type: "success", text: "Resume deleted." });
-    } catch (err) {
-      setStatus({ type: "error", text: err.message });
-    } finally {
-      setBusy(null);
-    }
+    return lock(async () => {
+      setBusy("delete");
+      try {
+        const data = await apiRequest("/profile/resume", { method: "DELETE", token });
+        updateUser(data.user);
+        setSuggestions([]);
+        setStatus({ type: "success", text: "Resume deleted." });
+      } catch (err) {
+        setStatus({ type: "error", text: err.message });
+      } finally {
+        setBusy(null);
+      }
+    });
   };
 
   const download = () =>

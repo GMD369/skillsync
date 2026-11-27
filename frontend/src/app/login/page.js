@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useSubmitLock } from "@/lib/useSubmitLock";
 import { validateLoginForm } from "@/lib/validators";
 import AuthLayout from "@/components/auth/AuthLayout";
 import FormField from "@/components/ui/FormField";
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const lock = useSubmitLock();
 
   // Already logged in? Go straight to the dashboard.
   useEffect(() => {
@@ -36,16 +38,18 @@ export default function LoginPage() {
     setErrors(found);
     if (Object.keys(found).length) return;
 
-    setSubmitting(true);
-    try {
-      await login(form.email, form.password);
-      router.push("/dashboard");
-    } catch (err) {
-      setErrors(err.errors || {});
-      setServerError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
+    await lock(async () => {
+      setSubmitting(true);
+      try {
+        await login(form.email, form.password);
+        router.push("/dashboard");
+      } catch (err) {
+        setErrors(err.errors || {});
+        setServerError(err.message);
+      } finally {
+        setSubmitting(false);
+      }
+    });
   };
 
   return (

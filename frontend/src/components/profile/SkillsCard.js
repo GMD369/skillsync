@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Save, Wrench } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { useSubmitLock } from "@/lib/useSubmitLock";
 import TagInput from "@/components/ui/TagInput";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
@@ -16,12 +17,13 @@ export default function SkillsCard() {
   const [draft, setDraft] = useState(null);
   const [status, setStatus] = useState(null);
   const [saving, setSaving] = useState(false);
+  const lock = useSubmitLock();
 
   const saved = user.skills || [];
   const skills = draft ?? saved;
   const changed = draft !== null && (draft.length !== saved.length || draft.some((s, i) => s !== saved[i]));
 
-  const save = async () => {
+  const save = () => lock(async () => {
     setSaving(true);
     try {
       const data = await apiRequest("/profile", { method: "PUT", token, body: { skills } });
@@ -33,7 +35,7 @@ export default function SkillsCard() {
     } finally {
       setSaving(false);
     }
-  };
+  });
 
   return (
     <section className="skeu-card p-6 sm:p-7">

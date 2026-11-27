@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true); // true while checking a saved token
+  const [connectionError, setConnectionError] = useState(""); // server unreachable while restoring
 
   const saveSession = useCallback((data) => {
     localStorage.setItem(TOKEN_KEY, data.token);
@@ -20,6 +21,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    setConnectionError("");
     setToken(null);
     setUser(null);
   }, []);
@@ -32,18 +34,36 @@ export function AuthProvider({ children }) {
   }, [logout]);
 
   // On page load, restore the session if a valid token was saved earlier.
-  useEffect(() => {
+  // Only a 401 (expired or invalid token) removes the token. If the server cannot be reached,
+  // the token is kept and the student can retry, instead of being logged out by a network problem.
+  // State is only set inside the promise callbacks, so this can run from an effect.
+  const checkSavedToken = useCallback(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
-    const restore = saved
+    const check = saved
       ? apiRequest("/auth/me", { token: saved })
           .then((data) => {
             setToken(saved);
             setUser(data.user);
+            setConnectionError("");
           })
-          .catch(() => localStorage.removeItem(TOKEN_KEY)) // expired or invalid token
+          .catch((err) => {
+            if (err.status === 401) localStorage.removeItem(TOKEN_KEY);
+            else setConnectionError(err.message);
+          })
       : Promise.resolve();
-    restore.finally(() => setLoading(false));
+    return check.finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    checkSavedToken();
+  }, [checkSavedToken]);
+
+  // "Try again" button after a connection problem.
+  const retrySession = useCallback(() => {
+    setLoading(true);
+    setConnectionError("");
+    return checkSavedToken();
+  }, [checkSavedToken]);
 
   const login = async (email, password) => {
     saveSession(await apiRequest("/auth/login", { method: "POST", body: { email, password } }));
@@ -56,7 +76,9 @@ export function AuthProvider({ children }) {
   return (
     // updateUser lets other modules (e.g. Profile) refresh the user after saving changes,
     // so the navbar and dashboard update immediately.
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser: setUser }}>
+    <AuthContext.Provider value={{
+      user, token, loading, login, register, logout, updateUser: setUser, connectionError, retrySession,
+    }}>
       {children}
     </AuthContext.Provider>
   );

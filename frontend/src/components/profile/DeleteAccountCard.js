@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Lock, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { useSubmitLock } from "@/lib/useSubmitLock";
 import Button from "@/components/ui/Button";
 import FormField from "@/components/ui/FormField";
 
@@ -14,19 +15,22 @@ export default function DeleteAccountCard() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const lock = useSubmitLock();
 
   const submit = async (event) => {
     event.preventDefault();
     if (!password) return setError("Enter your password to confirm");
-    setBusy(true);
-    setError("");
-    try {
-      await apiRequest("/profile", { method: "DELETE", token, body: { password } });
-      logout(); // the protected page then sends the visitor to the login page
-    } catch (err) {
-      setError(err.errors?.password || err.message);
-      setBusy(false);
-    }
+    await lock(async () => {
+      setBusy(true);
+      setError("");
+      try {
+        await apiRequest("/profile", { method: "DELETE", token, body: { password } });
+        logout(); // the protected page then sends the visitor to the login page
+      } catch (err) {
+        setError(err.errors?.password || err.message);
+        setBusy(false);
+      }
+    });
   };
 
   return (

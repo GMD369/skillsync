@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Clock, FolderGit2, Target } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import LoadError from "@/components/ui/LoadError";
 
 const LEVELS = [
   { value: "", label: "All levels" },
@@ -21,15 +21,24 @@ function ProjectsContent() {
   const [level, setLevel] = useState("");
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [updating, setUpdating] = useState(false); // true while a new filter is loading
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let active = true;
     const query = new URLSearchParams({ limit: "9", ...(level && { level }) });
     apiRequest(`/recommendations/projects?${query}`, { token })
       .then((res) => { if (active) { setData(res); setError(null); } })
-      .catch((err) => active && setError(err.message));
+      .catch((err) => active && setError(err.message))
+      .finally(() => active && setUpdating(false));
     return () => { active = false; };
-  }, [token, level]);
+  }, [token, level, reloadKey]);
+
+  const chooseLevel = (value) => {
+    if (value === level) return;
+    setUpdating(true);
+    setLevel(value);
+  };
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
@@ -47,7 +56,7 @@ function ProjectsContent() {
         </div>
         <div className="flex flex-wrap gap-1 rounded-xl p-1" role="group" aria-label="Filter by level">
           {LEVELS.map((l) => (
-            <button key={l.value} type="button" onClick={() => setLevel(l.value)} aria-pressed={level === l.value}
+            <button key={l.value} type="button" onClick={() => chooseLevel(l.value)} aria-pressed={level === l.value}
               className={`rounded-lg px-3 py-1.5 text-xs font-bold ${level === l.value ? "skeu-tab-active" : "skeu-emboss text-[#4a4555]"}`}>
               {l.label}
             </button>
@@ -55,8 +64,16 @@ function ProjectsContent() {
         </div>
       </header>
 
-      {error && <div className="mt-6"><Alert variant="error">{error}</Alert></div>}
-      {!data && !error && <p className="skeu-emboss mt-10 text-center text-[#6b6476]">Loading project ideas...</p>}
+      {error && (
+        <div className="mt-6">
+          <LoadError
+            message={data
+              ? `The list could not be updated, so the last loaded projects are shown. ${error}`
+              : `Project ideas could not be loaded. ${error}`}
+            onRetry={() => { setError(null); setUpdating(true); setReloadKey((k) => k + 1); }} />
+        </div>
+      )}
+      {!data && !error && <p className="skeu-emboss mt-10 text-center text-[#6b6476]" role="status">Loading project ideas...</p>}
 
       {data && !data.basedOn.targetRole && (
         <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -74,9 +91,10 @@ function ProjectsContent() {
       {data && data.recommendations.length > 0 && (
         <>
           <p className="skeu-emboss mt-6 text-sm text-[#6b6476]">
-            Showing {data.recommendations.length} of {data.total} matching projects
+            {updating ? "Updating..." : `Showing ${data.recommendations.length} of ${data.total} matching projects`}
           </p>
-          <ul className="mt-4 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <ul className={`mt-4 grid gap-5 transition-opacity md:grid-cols-2 lg:grid-cols-3 ${updating ? "opacity-50" : ""}`}
+            aria-busy={updating}>
             {data.recommendations.map(({ project, match }) => (
               <li key={project.id} className="skeu-card flex flex-col p-6">
                 <div className="flex items-start justify-between gap-3">

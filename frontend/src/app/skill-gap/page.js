@@ -7,6 +7,8 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { useSubmitLock } from "@/lib/useSubmitLock";
+import LoadError from "@/components/ui/LoadError";
 
 const statusStyle = {
   done: { label: "Done", badge: "skeu-badge-green", Icon: Check },
@@ -22,6 +24,9 @@ function SkillGapContent() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const lock = useSubmitLock();
 
   useEffect(() => {
     let active = true;
@@ -32,13 +37,20 @@ function SkillGapContent() {
         if (!active) return;
         setRoles(roleData.roles);
         if (gapData) setGap(gapData);
+        setLoadError("");
       })
-      .catch((err) => active && setError(err.message))
+      .catch((err) => active && setLoadError(`Career roles could not be loaded. ${err.message}`))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [token, user.targetRole]);
+  }, [token, user.targetRole, reloadKey]);
 
-  const analyze = async () => {
+  const retry = () => {
+    setLoading(true);
+    setLoadError("");
+    setReloadKey((k) => k + 1);
+  };
+
+  const analyze = () => lock(async () => {
     if (!selected) return setError("Choose one career role to continue.");
     setSaving(true);
     setError("");
@@ -53,9 +65,17 @@ function SkillGapContent() {
     } finally {
       setSaving(false);
     }
-  };
+  });
 
-  if (loading) return <p className="skeu-emboss p-8 text-center text-[#6b6476]">Loading career roles...</p>;
+  if (loading) return <p className="skeu-emboss p-8 text-center text-[#6b6476]" role="status">Loading career roles...</p>;
+
+  if (loadError) {
+    return (
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
+        <LoadError message={loadError} onRetry={retry} />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">

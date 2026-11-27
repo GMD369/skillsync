@@ -7,6 +7,8 @@ import Alert from "@/components/ui/Alert";
 import Button from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { useSubmitLock } from "@/lib/useSubmitLock";
+import LoadError from "@/components/ui/LoadError";
 
 // Learning Roadmap page (M5). Every action is one database operation on the "roadmaps" collection:
 // Create (POST), Read (GET), Update a task (PATCH) and Delete (DELETE).
@@ -16,17 +18,26 @@ function RoadmapContent() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(null); // "create" | "delete" | taskId | null
   const [status, setStatus] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  // Only one change at a time: if two task clicks ran in parallel, the older response could
+  // arrive last and show stale progress.
+  const lock = useSubmitLock();
 
   useEffect(() => {
     let active = true;
     apiRequest("/career/roadmap", { token })
-      .then((res) => active && setData(res))
-      .catch((err) => active && err.status !== 404 && setStatus({ type: "error", text: err.message }))
+      .then((res) => { if (active) { setData(res); setLoadError(""); } })
+      .catch((err) => {
+        if (!active) return;
+        if (err.status === 404) setData(null); // 404 = no roadmap yet (an empty state, not an error)
+        else setLoadError(`Your roadmap could not be loaded. ${err.message}`);
+      })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
-  }, [token]);
+  }, [token, reloadKey]);
 
-  const run = async (key, action) => {
+  const run = (key, action) => lock(async () => {
     setBusy(key);
     setStatus(null);
     try {
@@ -36,7 +47,7 @@ function RoadmapContent() {
     } finally {
       setBusy(null);
     }
-  };
+  });
 
   const create = () => run("create", async () => {
     const res = await apiRequest("/career/roadmap", { method: "POST", token });
@@ -58,7 +69,15 @@ function RoadmapContent() {
     });
   };
 
-  if (loading) return <p className="skeu-emboss p-8 text-center text-[#6b6476]">Loading your roadmap...</p>;
+  if (loading) return <p className="skeu-emboss p-8 text-center text-[#6b6476]" role="status">Loading your roadmap...</p>;
+
+  if (loadError) {
+    return (
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+        <LoadError message={loadError} onRetry={() => { setLoading(true); setLoadError(""); setReloadKey((k) => k + 1); }} />
+      </main>
+    );
+  }
 
   const roadmap = data?.roadmap;
 
@@ -151,7 +170,7 @@ function RoadmapContent() {
                   <ul className="skeu-well mt-4 divide-y divide-black/5 px-3">
                     {week.tasks.map((task) => (
                       <li key={task._id}>
-                        <button type="button" onClick={() => toggle(task)} disabled={busy === task._id}
+                        <button type="button" onClick={() => toggle(task)} disabled={busy !== null}
                           role="checkbox" aria-checked={task.done}
                           className="flex w-full items-center gap-3 py-3 text-left disabled:opacity-60">
                           <span className={`${task.done ? "skeu-check-done" : "skeu-check"} grid h-6 w-6 shrink-0 place-items-center`}>

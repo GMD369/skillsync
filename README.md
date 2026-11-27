@@ -22,6 +22,8 @@ suggestions and interview practice.
 | M8 – Interview Prep | ⏳ Planned (Should Have) |
 
 **Tests:** 71 backend API tests + 15 AI service tests, all passing. `npm run api:check` tests all endpoints against the running server (41 checks).
+`npm run test:e2e` (frontend) runs the **complete workflow in a real browser** – register → profile → resume → skill gap → roadmap → dashboard → projects → failure handling → delete account (16 steps).
+**Integration:** how the frontend, backend and database work together, and how loading, errors and repeated clicks are handled – **[docs/INTEGRATION.md](docs/INTEGRATION.md)**.
 **API:** 21 working endpoints – full reference in **[docs/API.md](docs/API.md)**, Postman collection in [docs/api/](docs/api/SkillSync.postman_collection.json).
 **Database:** MongoDB with 4 collections (`users`, `careerroles`, `roadmaps`, `projects`) – see **[docs/DATABASE.md](docs/DATABASE.md)**.
 
@@ -105,17 +107,19 @@ An arrow from A to B means B needs A first. Critical path: **M1 → M2 → M4 �
 ```
 skillsync/
 ├── frontend/                    Next.js + React + Tailwind CSS
-│   ├── public/                  static assets (images, icons)
-│   └── src/
-│       ├── app/                 pages (App Router: one folder = one route)
-│       │   ├── page.js          landing page
-│       │   ├── layout.js        shared layout with navbar
-│       │   ├── login/  register/  dashboard/  profile/  skill-gap/  roadmap/  projects/
-│       ├── components/
-│       │   ├── layout/          Navbar and page layout parts
-│       │   └── ui/              reusable UI elements (Button, ...)
-│       └── lib/
-│           └── api.js           helper for calling the backend API
+│   ├── src/
+│   │   ├── app/                 pages (App Router: one folder = one route)
+│   │   │   ├── page.js          landing page
+│   │   │   ├── layout.js        shared layout with navbar
+│   │   │   ├── login/  register/  dashboard/  profile/  skill-gap/  roadmap/  projects/
+│   │   ├── components/
+│   │   │   ├── layout/          Navbar and page layout parts
+│   │   │   └── ui/              reusable UI elements (Button, ...)
+│   │   ├── context/             AuthContext: logged-in user + token
+│   │   └── lib/
+│   │       ├── api.js           the only place that calls the backend (timeouts, error messages)
+│   │       └── useSubmitLock.js prevents duplicate submissions
+│   └── e2e/                     end-to-end browser test (workflow.mjs, cdp.mjs)
 │
 ├── backend/                     Node.js + Express REST API
 │   ├── src/
@@ -141,7 +145,7 @@ skillsync/
 │   ├── tests/                   pytest tests
 │   └── requirements.txt
 │
-├── docs/                        API reference, database design, module docs, diagrams, Postman collection
+├── docs/                        API reference, integration, database design, module docs, diagrams, Postman collection
 ├── .gitignore
 └── README.md
 ```
@@ -239,6 +243,7 @@ Check: http://localhost:8000/health. Interactive API docs: http://localhost:8000
 ```bash
 cd backend && npm test        # 71 API tests: auth 15, profile 20, career 9, roadmap 13, dashboard 6, recommendations 8
 cd backend && npm run api:check   # with the server running: 41 requests against every endpoint, then clean-up
+cd frontend && npm run test:e2e   # with all three services running: full workflow in Edge/Chrome (16 steps)
 cd ai-service && pytest       # skill detection and normalization tests (15)
 ```
 
@@ -270,6 +275,7 @@ the frontend) and add your own values.
 - [x] Phase 1 Day 8: **M4 Career & Skill Gap** – five career roles, goal selection, skill comparison, match percentage and dashboard integration
 - [x] Phase 1 Day 9: **Database design & integration** – schema diagram, indexes and validation, roadmap CRUD (M5 data layer), account deletion with related data, database scripts and [documentation](docs/DATABASE.md)
 - [x] Phase 1 Day 10: **Backend development & API integration** – dashboard summary API (M6), project recommendations API with a new `projects` collection (M7), request logging, AI-service health check, [API reference](docs/API.md), Postman collection and an end-to-end API check (71 tests, 41 live checks)
+- [x] Phase 1 Day 11: **Frontend–backend integration** – request timeouts and readable error messages, "Try again" on every page, login kept when the server is down, empty states, duplicate-submission lock, and a [browser test of the complete workflow](docs/INTEGRATION.md) (16 of 16 steps pass)
 
 ### Next week (Phase 1, week 2)
 
